@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(ls -la \"C:\\\\Users\\\\tormo\\\\.claude\\\\projects\\\\C--Users-tormo-Documents-VibeGames-Celtest\\\\memory\"\" 2>/dev/null; cat \"C:Userstormo.claudeprojectsC--Users-tormo-Documents-VibeGames-CeltestmemoryMEMORY.md\" 2>/dev/null || echo \"No MEMORY.md yet \")"
+      "Bash(ls -la \"C:\\\\Users\\\\tormo\\\\.claude\\\\projects\\\\C--Users-tormo-Documents-VibeGames-Celtest\\\\memory\"\" 2>/dev/null; cat \"C:Userstormo.claudeprojectsC--Users-tormo-Documents-VibeGames-CeltestmemoryMEMORY.md\" 2>/dev/null || echo \"No MEMORY.md yet \")",
+      "Bash(npm install)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npx vite build)"
     ]
   }
 }

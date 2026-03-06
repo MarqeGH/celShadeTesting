@@ -38,7 +38,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-001: Project Bootstrap
+## [DONE] T-001: Project Bootstrap
 
 | Field | Value |
 |-------|-------|
