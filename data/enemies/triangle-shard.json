@@ -1,0 +1,84 @@
+{
+  "id": "triangle-shard",
+  "name": "Triangle Shard",
+  "shape": "triangle",
+  "stats": {
+    "maxHP": 30,
+    "moveSpeed": 6,
+    "turnSpeed": 180,
+    "poise": 20,
+    "poiseRegenDelay": 2000,
+    "poiseRegenRate": 5
+  },
+  "perception": {
+    "aggroRange": 10,
+    "attackRange": 4,
+    "retreatRange": 0,
+    "losRequired": true
+  },
+  "attacks": [
+    {
+      "id": "lunge",
+      "name": "Lunge",
+      "telegraphDuration": 400,
+      "activeDuration": 200,
+      "recoveryDuration": 600,
+      "damage": 15,
+      "staggerDamage": 10,
+      "range": 4,
+      "hitboxShape": "line",
+      "hitboxSize": { "length": 4, "width": 1 },
+      "movementDuringAttack": { "type": "dash", "distance": 4, "speed": 20 }
+    },
+    {
+      "id": "slash",
+      "name": "Slash",
+      "telegraphDuration": 300,
+      "activeDuration": 150,
+      "recoveryDuration": 400,
+      "damage": 10,
+      "staggerDamage": 5,
+      "range": 2,
+      "hitboxShape": "arc",
+      "hitboxSize": { "radius": 2, "angle": 90 },
+      "movementDuringAttack": null
+    }
+  ],
+  "drops": {
+    "shards": { "min": 3, "max": 7 },
+    "fragmentChance": 0.05
+  },
+  "fsm": {
+    "initialState": "idle",
+    "states": [
+      {
+        "name": "idle",
+        "transitions": [
+          { "to": "chase", "condition": "playerInAggroRange" }
+        ]
+      },
+      {
+        "name": "chase",
+        "transitions": [
+          { "to": "attack", "condition": "playerInAttackRange" },
+          { "to": "idle", "condition": "playerOutOfAggroRange" }
+        ]
+      },
+      {
+        "name": "attack",
+        "params": { "attackPool": ["lunge", "slash"], "attackCooldown": 800 },
+        "transitions": [
+          { "to": "chase", "condition": "attackComplete_and_playerOutOfAttackRange" },
+          { "to": "attack", "condition": "attackComplete_and_playerInAttackRange_and_cooldownReady" }
+        ]
+      },
+      {
+        "name": "staggered",
+        "params": { "duration": 1000 },
+        "transitions": [
+          { "to": "chase", "condition": "staggerComplete" }
+        ]
+      }
+    ]
+  }
+}

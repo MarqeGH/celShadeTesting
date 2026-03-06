@@ -1,0 +1,16 @@
+{
+  "id": "fracture-blade",
+  "name": "Fracture Blade",
+  "description": "A jagged shard. Balanced. Reliable.",
+  "baseDamage": 18,
+  "heavyMultiplier": 2.0,
+  "attackSpeed": 1.0,
+  "range": 2.5,
+  "staggerDamage": 15,
+  "comboHits": 2,
+  "staminaCostLight": 12,
+  "staminaCostHeavy": 25,
+  "hitboxShape": "arc",
+  "hitboxSize": { "radius": 2.5, "angle": 120 },
+  "unlockCost": 0
+}

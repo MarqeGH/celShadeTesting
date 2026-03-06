@@ -1,0 +1,76 @@
+[
+  {
+    "id": "z1-intro",
+    "difficulty": 1,
+    "waves": [
+      {
+        "delay": 0,
+        "spawns": [
+          { "enemyId": "triangle-shard", "count": 2, "spawnPoint": "random" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "z1-first-real",
+    "difficulty": 2,
+    "waves": [
+      {
+        "delay": 0,
+        "spawns": [
+          { "enemyId": "triangle-shard", "count": 3, "spawnPoint": "random" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "z1-ranged-intro",
+    "difficulty": 3,
+    "waves": [
+      {
+        "delay": 0,
+        "spawns": [
+          { "enemyId": "triangle-shard", "count": 2, "spawnPoint": "nearest" },
+          { "enemyId": "cube-sentinel", "count": 1, "spawnPoint": "farthest" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "z1-wave-fight",
+    "difficulty": 5,
+    "waves": [
+      {
+        "delay": 0,
+        "spawns": [
+          { "enemyId": "triangle-shard", "count": 3, "spawnPoint": "random" }
+        ]
+      },
+      {
+        "delay": 1000,
+        "spawns": [
+          { "enemyId": "cube-sentinel", "count": 2, "spawnPoint": "farthest" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "z1-pressure",
+    "difficulty": 6,
+    "waves": [
+      {
+        "delay": 0,
+        "spawns": [
+          { "enemyId": "triangle-shard", "count": 2, "spawnPoint": "nearest" },
+          { "enemyId": "cube-sentinel", "count": 2, "spawnPoint": "farthest" }
+        ]
+      },
+      {
+        "delay": 2000,
+        "spawns": [
+          { "enemyId": "triangle-shard", "count": 2, "spawnPoint": "random" }
+        ]
+      }
+    ]
+  }
+]

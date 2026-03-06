@@ -1,0 +1,27 @@
+{
+  "id": "atrium-room-square",
+  "zone": "shattered-atrium",
+  "size": { "x": 12, "y": 4, "z": 12 },
+  "geometry": "prefab:atrium-room-square",
+  "spawnPoints": [
+    { "x": -4, "y": 0, "z": -4 },
+    { "x": 4, "y": 0, "z": -4 },
+    { "x": -4, "y": 0, "z": 4 },
+    { "x": 4, "y": 0, "z": 4 }
+  ],
+  "playerEntry": { "x": 0, "y": 0, "z": -5.5 },
+  "exits": [
+    { "position": { "x": 0, "y": 0, "z": 5.5 }, "direction": "north", "locked": true },
+    { "position": { "x": 5.5, "y": 0, "z": 0 }, "direction": "east", "locked": true }
+  ],
+  "hazards": [
+    {
+      "type": "static-discharge",
+      "position": { "x": 3, "y": 0, "z": 3 },
+      "params": { "radius": 1.5, "damagePerTick": 5, "tickInterval": 1000 }
+    }
+  ],
+  "props": [
+    { "type": "pillar-cracked", "position": { "x": 0, "y": 0, "z": 0 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "scale": 1.0 }
+  ]
+}

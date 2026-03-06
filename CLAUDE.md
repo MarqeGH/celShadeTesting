@@ -1,0 +1,159 @@
+# CLAUDE.md — Celtest Project Guide
+
+## What This Is
+
+3D cel-shaded soulslike roguelike built with **Three.js + TypeScript + Vite**. Humans have collapsed into abstract geometric shapes. The player is an unstable form fighting through zones of collapsed humanity.
+
+**Current state**: Blueprint/planning phase complete. No source code yet — only documentation, data schemas, and task scaffolding exist. Implementation starts at task T-001 (project bootstrap).
+
+## Stack
+
+- **Three.js** (r160+) — rendering, scene graph, materials
+- **TypeScript** (strict mode) — all source code
+- **Vite** — build tool and dev server
+- **Howler.js** — audio
+- **Vitest** — testing
+- **No physics engine** — custom AABB/sphere collisions only
+- **No UI framework** — HUD/menus are plain HTML/CSS overlay on canvas
+
+## Project Layout
+
+```
+docs/           — 12 design documents (architecture, enemies, combat, etc.)
+tasks/TASKS.md  — 45 implementation tasks with dependencies and acceptance criteria
+data/           — Runtime JSON: enemies/, weapons/, rooms/, encounters/, progression/
+src/            — Source code (empty folders scaffolded, no files yet)
+assets/         — Models, textures, audio, fonts, shaders (empty)
+tests/          — Test files (empty)
+public/         — HTML shell (not yet created)
+```
+
+### Key src/ Subfolders
+
+| Folder | Owns |
+|--------|------|
+| `app/` | Game.ts (composition root), GameLoop.ts, EventBus.ts, InputManager.ts |
+| `engine/` | AssetLoader, CollisionSystem, Clock, ObjectPool |
+| `rendering/` | Renderer, CelShadingPipeline, PostProcessing, ParticleSystem |
+| `shaders/` | GLSL as TypeScript template literal strings |
+| `player/` | PlayerController, PlayerStateMachine, PlayerStats, PlayerModel |
+| `camera/` | CameraController, LockOnSystem, CameraShake |
+| `combat/` | CombatSystem, HitboxManager, DamageCalculator, WeaponSystem, StaggerSystem |
+| `enemies/` | BaseEnemy (abstract), EnemyFactory, EnemyRegistry, per-type files |
+| `ai/` | StateMachine (generic FSM), AIState, Perception, reusable states/ |
+| `world/` | RoomAssembler, RoomModule, ZoneGenerator, DoorSystem, EncounterManager |
+| `ui/` | HUD, MenuSystem, DamageNumbers, UIManager — all HTML/CSS |
+| `progression/` | RunState, MetaProgression, UnlockRegistry |
+| `save/` | SaveManager (localStorage), SaveSchema |
+| `config/` | gameConfig.ts (all tuning values), renderConfig.ts |
+| `utils/` | math.ts, timer.ts, debug.ts, constants.ts |
+
+## Architecture Rules
+
+- **Game.ts is the composition root**. It instantiates all systems and passes references. No global singletons — use constructor injection.
+- **EventBus for decoupled communication**. Systems emit typed events (`PLAYER_DAMAGED`, `ENEMY_DIED`, `ROOM_CLEARED`, etc.). Never import system-to-system for notifications.
+- **Fixed-timestep game loop**: 60Hz update with accumulator pattern, variable render rate.
+- **FSM everywhere**: Player states and enemy AI both use the same generic `StateMachine` class in `src/ai/StateMachine.ts`.
+- **Data-driven content**: Enemies, weapons, rooms, encounters are all JSON in `data/`. Add new content by adding JSON + a behavior class, not by modifying core systems.
+- **Hitbox/hurtbox model**: Hitboxes are temporary (active during attack window only). Hurtboxes are persistent. One hit per attack instance per target. No physics.
+
+## Critical Conventions
+
+### No Magic Numbers
+All tuning values (speeds, damages, stamina costs, timing windows) live in `src/config/gameConfig.ts`. Never hardcode gameplay numbers in logic files.
+
+### Data Schemas Are Canonical
+TypeScript interfaces in `docs/DATA_SCHEMAS.md` define the shape of all JSON files. Enemy JSON, weapon JSON, room JSON, encounter JSON must conform. Schemas include: `EnemyData`, `AttackData`, `RoomModuleData`, `EncounterData`, `WeaponData`, `PlayerStats`, `UnlockData`, `FSMStateConfig`.
+
+### Enemy Implementation Pattern
+1. Create `data/enemies/{id}.json` conforming to `EnemyData` schema
+2. Create `src/enemies/{Name}.ts` extending `BaseEnemy`
+3. Override `createMesh()` and `initFSM()`
+4. Register in `EnemyRegistry` — factory handles the rest
+
+### Player State Machine States
+`idle`, `run`, `dodge`, `light_attack`, `heavy_attack`, `stagger`, `parry`, `heal`, `dead`. Use a state registry pattern so new states can be added without modifying the FSM core.
+
+### UI Is HTML/CSS
+All UI (HUD, menus, damage numbers) is `position: absolute` HTML/CSS overlay on the Three.js canvas. Not rendered on canvas. CSS animations for transitions.
+
+### Cel-Shading
+Custom `ShaderMaterial` with 4-step toon ramp. Material factory: `createCelMaterial(baseColor)`. No image textures on geometry — color from material properties only.
+
+### Performance Targets
+- 60fps on mid-range hardware
+- Draw calls under 200/frame
+- Object pool particles, projectiles, damage numbers, pickups — no runtime allocation in combat
+
+## Task System
+
+`tasks/TASKS.md` has 45 tasks (T-001 through T-045) organized in 5 phases:
+
+1. **Foundation** (T-001–T-015): Bootstrap, scene, player movement, camera, collision
+2. **Combat Core** (T-009–T-031): FSM, stamina, attacks, hitboxes, damage, stagger
+3. **Enemies** (T-020–T-035): BaseEnemy, factory, Triangle Shard, HUD, lock-on, pickups
+4. **World** (T-027–T-030): Room assembly, encounters, doors, zone generation
+5. **Polish** (T-012, T-023, T-032–T-042): Second enemy, full combat kit, particles, save, UI
+
+**First playable slice**: 3 Triangle Shards in a 20x20m arena. Fight, die, retry. No rooms/progression. See `docs/FIRST_IMPLEMENTATION_SLICE.md`.
+
+### Work Types
+
+Every task has a **Work Type** field that categorizes its domain. Agents should stay within their Work Type's file boundaries:
+
+| Work Type | Scope | Stay within |
+|-----------|-------|-------------|
+| `infrastructure` | Bootstrap, config, event bus, collision primitives, loaders, pools | `src/app/`, `src/engine/`, `src/config/`, `src/utils/` |
+| `gameplay` | Player mechanics, combat, AI, enemy behavior, interactions | `src/player/`, `src/combat/`, `src/enemies/`, `src/ai/`, `src/camera/`, `src/interactions/` |
+| `rendering` | Shaders, materials, post-processing, mesh creation | `src/rendering/`, `src/shaders/`, `src/player/PlayerModel.ts` |
+| `data` | JSON schemas, registries, factory patterns | `data/`, `src/enemies/EnemyFactory.ts`, `src/enemies/EnemyRegistry.ts` |
+| `world` | Rooms, zones, encounters, doors, hazards | `src/world/`, `src/levels/` |
+| `UI` | HUD, menus, overlays | `src/ui/` |
+| `tooling` | Debug tools, dev utilities | `src/utils/debug.ts` |
+| `polish` | Particles, camera shake, damage numbers, VFX | `src/rendering/ParticleSystem.ts`, `src/camera/CameraShake.ts`, `src/ui/DamageNumbers.ts` |
+| `meta` | Save, progression, run state | `src/progression/`, `src/save/` |
+
+**Key boundary rules**: gameplay agents don't touch rendering pipeline. Rendering agents don't touch combat logic. Polish agents don't change balance values. Data agents don't modify engine internals.
+
+### Task Completion Protocol
+- Prepend `[DONE]` to completed task titles in `tasks/TASKS.md`
+- Add `[BLOCKED: reason]` if stuck
+- New bugs: `T-BUG-{number}`
+- Branch per task: `feat/T-{ID}-{short-name}`
+
+## High-Conflict Files (Coordinate Carefully)
+
+These files are touched by many tasks. Use registry/array patterns so additions don't require editing existing lines:
+
+- `src/app/Game.ts` — system registration
+- `src/player/PlayerStateMachine.ts` — state additions
+- `src/player/PlayerController.ts` — movement + collision
+- `src/combat/CombatSystem.ts` — hit resolution
+- `src/main.ts` — entry point
+
+All files in `data/`, `src/enemies/` (except BaseEnemy), `src/ui/`, `src/shaders/`, and `tests/` are safe to work on independently.
+
+## Key Design Decisions
+
+- **No jump**. Grounded combat only.
+- **No dialogue/text**. Lore is environmental and behavioral.
+- **No inventory**. Weapons are equipped-or-not, max 2 carried.
+- **Roguelike meta-progression expands variety, not power**. Unlocks add to the pool. Stat caps at +20%.
+- **Rooms are data-driven prefab assemblies**, not procedurally generated geometry.
+- **Stamina gates everything**: attack (12), dodge (20), heavy (25), sprint (3/s). Regen 25/s after 400ms pause. Exhaustion at 0 until 20.
+- **All attacks telegraph**: minimum 300ms wind-up. Red glow = melee, orange = ranged, white flash = unblockable.
+
+## Reference Docs
+
+| Need to know about... | Read |
+|------------------------|------|
+| System boundaries and dependencies | `docs/ARCHITECTURE.md` |
+| Enemy stats, attacks, behavior | `docs/ENEMY_BIBLE.md` |
+| Zone themes, hazards, room modules | `docs/ENVIRONMENT_BIBLE.md` |
+| Player kit, stamina, combat pacing | `docs/PLAYER_AND_COMBAT_SPEC.md` |
+| JSON data shapes and examples | `docs/DATA_SCHEMAS.md` |
+| Full task list with dependencies | `tasks/TASKS.md` |
+| Implementation order and phasing | `docs/AGENT_EXECUTION_PLAN.md` |
+| Minimum playable vertical slice | `docs/FIRST_IMPLEMENTATION_SLICE.md` |
+| File/folder layout | `docs/PROJECT_STRUCTURE.md` |
+| Seed TODO checklists per file | `docs/TODO_SEED_FILES.md` |
