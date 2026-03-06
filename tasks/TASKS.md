@@ -53,7 +53,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-002: Basic Three.js Scene
+## [DONE] T-002: Basic Three.js Scene
 
 | Field | Value |
 |-------|-------|
@@ -65,6 +65,14 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Create Game class that initializes a Three.js WebGLRenderer, Scene, and PerspectiveCamera. Render a static colored cube at origin. Set up window resize handling. Background color: dark grey (#1a1a1a). Camera at (0, 5, 10) looking at origin. |
 | **Acceptance Criteria** | Browser shows a 3D cube rendered on dark background. Window resize adjusts viewport correctly. No console errors. |
 | **Verification** | Visual inspection in browser. Resize window and confirm no distortion. |
+
+**Implementation Notes:**
+- Created `src/rendering/Renderer.ts` — wraps `THREE.WebGLRenderer` with resize support, clear color set to `#1a1a1a`
+- Created `src/app/Game.ts` — composition root that creates Scene, PerspectiveCamera (at 0,5,10), Renderer, and a test cube (`BoxGeometry` + `MeshBasicMaterial` in desaturated cyan)
+- Updated `src/main.ts` — instantiates `Game` with the `#game-container` element
+- Window resize handler updates camera aspect ratio, projection matrix, and renderer size
+- TypeScript compiles clean, Vite build succeeds
+- **Files changed:** `src/rendering/Renderer.ts` (new), `src/app/Game.ts` (new), `src/main.ts` (modified)
 
 ---
 
