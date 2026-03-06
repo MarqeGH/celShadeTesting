@@ -1,11 +1,13 @@
 import * as THREE from 'three';
 import { Renderer } from '../rendering/Renderer';
 import { GameLoop } from './GameLoop';
+import { InputManager, GameAction } from './InputManager';
 
 export class Game {
   readonly scene: THREE.Scene;
   readonly camera: THREE.PerspectiveCamera;
   readonly renderer: Renderer;
+  readonly input: InputManager;
 
   private container: HTMLElement;
   private gameLoop: GameLoop;
@@ -22,6 +24,7 @@ export class Game {
     this.camera.lookAt(0, 0, 0);
 
     this.renderer = new Renderer(container);
+    this.input = new InputManager();
 
     this.addTestCube();
 
@@ -41,12 +44,34 @@ export class Game {
     this.scene.add(this.testCube);
   }
 
+  // Actions to log when justPressed
+  private static readonly LOG_ACTIONS: GameAction[] = [
+    'dodge', 'lightAttack', 'heavyAttack', 'parry', 'heal',
+    'lockOn', 'swapWeapon', 'pause',
+  ];
+
   private update(dt: number): void {
+    this.input.update();
+
+    // Log justPressed actions (temporary test)
+    for (const action of Game.LOG_ACTIONS) {
+      if (this.input.justPressed(action)) {
+        console.log(`[Input] justPressed: ${action}`);
+      }
+    }
+
+    // Log held movement/sprint
+    if (this.input.isPressed('sprint')) {
+      console.log('[Input] held: sprint');
+    }
+
     // Rotate test cube at consistent speed regardless of frame rate
     if (this.testCube) {
       this.testCube.rotation.y += 1.5 * dt;
       this.testCube.rotation.x += 0.8 * dt;
     }
+
+    this.input.resetMouseDelta();
   }
 
   private render(_alpha: number): void {
@@ -63,6 +88,7 @@ export class Game {
 
   dispose(): void {
     this.gameLoop.stop();
+    this.input.dispose();
     window.removeEventListener('resize', this.onResize);
   }
 }

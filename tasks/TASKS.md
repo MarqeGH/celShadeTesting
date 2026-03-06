@@ -122,7 +122,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-005: Input Manager
+## [DONE] T-005: Input Manager
 
 | Field | Value |
 |-------|-------|
@@ -134,6 +134,19 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Create InputManager that maps keyboard + mouse input to game actions. Support actions: `moveForward`, `moveBack`, `moveLeft`, `moveRight`, `sprint`, `dodge`, `lightAttack`, `heavyAttack`, `parry`, `heal`, `lockOn`, `swapWeapon`, `pause`. Provide `isPressed(action)`, `justPressed(action)`, `justReleased(action)`. Poll-based (update once per frame). Include 150ms input buffer for attack queuing. |
 | **Acceptance Criteria** | WASD maps to movement. Mouse buttons map to attacks. Shift = sprint. Space = dodge. `justPressed` fires only on the frame the key goes down. Input buffer stores recent actions for 150ms. |
 | **Verification** | Manual test: log actions to console on key press. Verify justPressed only fires once. |
+
+**Implementation Notes:**
+- Created `src/app/InputManager.ts` — poll-based input system with event queuing
+- `GameAction` type defines all 13 actions; `DEFAULT_BINDINGS` maps them to keyboard codes / mouse buttons
+- WASD → movement, Shift → sprint, Space → dodge, LMB → light attack, RMB → heavy attack, Q → parry, R → heal, Tab/MMB → lock-on, F → swap weapon, Escape → pause
+- Edge detection via queue-then-process pattern: `keyDownQueue`/`keyUpQueue` filled by event handlers, consumed in `update()` to populate `keysJustDown`/`keysJustUp` sets
+- `isPressed(action)` — held state; `justPressed(action)` — single-frame down edge; `justReleased(action)` — single-frame up edge
+- 150ms input buffer: `justPressed` actions are buffered; `consumeBuffer(action)` / `hasBuffered(action)` for attack queuing
+- Mouse delta tracking (`mouseDeltaX`/`mouseDeltaY`) for future camera orbit
+- Context menu suppressed to allow RMB for heavy attack
+- `dispose()` removes all listeners; custom bindings via constructor override
+- TypeScript compiles clean, Vite build succeeds
+- **Files changed:** `src/app/InputManager.ts` (new)
 
 ---
 
