@@ -3,12 +3,14 @@ import { Renderer } from '../rendering/Renderer';
 import { GameLoop } from './GameLoop';
 import { InputManager, GameAction } from './InputManager';
 import { PlayerModel } from '../player/PlayerModel';
+import { CameraController } from '../camera/CameraController';
 
 export class Game {
   readonly scene: THREE.Scene;
   readonly camera: THREE.PerspectiveCamera;
   readonly renderer: Renderer;
   readonly input: InputManager;
+  readonly cameraController: CameraController;
 
   private container: HTMLElement;
   private gameLoop: GameLoop;
@@ -22,11 +24,10 @@ export class Game {
 
     const aspect = container.clientWidth / container.clientHeight;
     this.camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 1000);
-    this.camera.position.set(0, 5, 10);
-    this.camera.lookAt(0, 0, 0);
 
     this.renderer = new Renderer(container);
     this.input = new InputManager();
+    this.cameraController = new CameraController(this.camera, this.input);
 
     this.addTestCube();
 
@@ -71,6 +72,9 @@ export class Game {
     }
 
     this.playerModel.update(dt);
+
+    // Update camera orbit and follow
+    this.cameraController.update(dt, this.playerModel.mesh.position);
 
     // Rotate test cube at consistent speed regardless of frame rate
     if (this.testCube) {

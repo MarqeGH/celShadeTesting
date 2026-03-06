@@ -174,7 +174,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-007: Third-Person Camera Controller
+## [DONE] T-007: Third-Person Camera Controller
 
 | Field | Value |
 |-------|-------|
@@ -186,6 +186,17 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Implement a third-person camera that follows the player position. Orbit via mouse movement (right mouse button held or always-on). Camera distance: 8m. Camera height offset: 3m. Smooth follow using lerp (smoothing factor: 0.1). Clamp vertical rotation to -10° to 60°. Mouse sensitivity configurable. |
 | **Acceptance Criteria** | Camera follows player position smoothly. Mouse orbit rotates camera around player. Vertical rotation is clamped. Camera distance and height are correct. |
 | **Verification** | Move player (once movement is in), verify camera follows. Orbit with mouse, verify smooth rotation and clamp. |
+
+**Implementation Notes:**
+- Created `src/camera/CameraController.ts` — third-person orbit camera with spherical coordinate orbit (yaw/pitch)
+- Mouse movement always controls orbit (no button hold required). Sensitivity: 0.003 rad/px for both axes
+- Distance: 8m, height offset: 3m above target. Pitch clamped to [-10°, 60°]
+- Smooth follow via `Vector3.lerp` with factor 0.1 per update step. First frame snaps to target to avoid lerping from origin
+- Exposes `getYaw()`, `getForward()`, `getRight()` for camera-relative movement (used by future PlayerController)
+- Integrated into `Game.ts`: constructed with camera + input refs, updated each tick with player mesh position
+- Removed static camera positioning from Game constructor (CameraController now owns camera transform)
+- TypeScript compiles clean, Vite build succeeds
+- **Files changed:** `src/camera/CameraController.ts` (new), `src/app/Game.ts` (modified)
 
 ---
 
