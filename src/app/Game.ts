@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Renderer } from '../rendering/Renderer';
+import { GameLoop } from './GameLoop';
 
 export class Game {
   readonly scene: THREE.Scene;
@@ -7,6 +8,8 @@ export class Game {
   readonly renderer: Renderer;
 
   private container: HTMLElement;
+  private gameLoop: GameLoop;
+  private testCube: THREE.Mesh | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -24,14 +27,30 @@ export class Game {
 
     window.addEventListener('resize', this.onResize);
 
-    this.render();
+    this.gameLoop = new GameLoop({
+      update: (dt) => this.update(dt),
+      render: (alpha) => this.render(alpha),
+    });
+    this.gameLoop.start();
   }
 
   private addTestCube(): void {
     const geometry = new THREE.BoxGeometry(1, 1, 1);
     const material = new THREE.MeshBasicMaterial({ color: 0x4488aa });
-    const cube = new THREE.Mesh(geometry, material);
-    this.scene.add(cube);
+    this.testCube = new THREE.Mesh(geometry, material);
+    this.scene.add(this.testCube);
+  }
+
+  private update(dt: number): void {
+    // Rotate test cube at consistent speed regardless of frame rate
+    if (this.testCube) {
+      this.testCube.rotation.y += 1.5 * dt;
+      this.testCube.rotation.x += 0.8 * dt;
+    }
+  }
+
+  private render(_alpha: number): void {
+    this.renderer.render(this.scene, this.camera);
   }
 
   private onResize = (): void => {
@@ -40,14 +59,10 @@ export class Game {
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
     this.renderer.resize(width, height);
-    this.render();
   };
 
-  private render(): void {
-    this.renderer.render(this.scene, this.camera);
-  }
-
   dispose(): void {
+    this.gameLoop.stop();
     window.removeEventListener('resize', this.onResize);
   }
 }

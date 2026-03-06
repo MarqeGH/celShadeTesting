@@ -76,7 +76,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-003: Game Loop with Fixed Timestep
+## [DONE] T-003: Game Loop with Fixed Timestep
 
 | Field | Value |
 |-------|-------|
@@ -88,6 +88,13 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Implement a fixed-timestep game loop (60Hz update, variable render). Clock class provides deltaTime and fixedStep. GameLoop uses requestAnimationFrame with accumulator pattern. Game.update(dt) called at fixed rate. Game.render(alpha) called every frame with interpolation alpha. Rotate the test cube in update() to verify loop works. |
 | **Acceptance Criteria** | Cube rotates at consistent speed regardless of frame rate. update() runs at 60Hz. render() runs at display refresh rate. |
 | **Verification** | Visual: cube rotates smoothly. Log update count per second — should be ~60. |
+
+**Implementation Notes:**
+- Created `src/engine/Clock.ts` — provides `deltaTime`, `elapsed`, and `fixedStep` (1/60). Uses rAF timestamp, converts ms→s, caps deltaTime at 250ms to prevent spiral of death after tab-away.
+- Created `src/app/GameLoop.ts` — accumulator-pattern loop: fixed 60Hz `update(dt)` calls + variable-rate `render(alpha)` with interpolation alpha. Uses `requestAnimationFrame`.
+- Updated `src/app/Game.ts` — integrates GameLoop, rotates test cube in `update()` (Y: 1.5 rad/s, X: 0.8 rad/s). Removed single-frame render call. Added `dispose()` cleanup for loop stop.
+- TypeScript compiles clean, Vite build succeeds, dev server starts.
+- **Files changed:** `src/engine/Clock.ts` (new), `src/app/GameLoop.ts` (new), `src/app/Game.ts` (modified)
 
 ---
 
