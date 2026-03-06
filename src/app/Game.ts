@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Renderer } from '../rendering/Renderer';
 import { GameLoop } from './GameLoop';
 import { InputManager, GameAction } from './InputManager';
+import { PlayerModel } from '../player/PlayerModel';
 
 export class Game {
   readonly scene: THREE.Scene;
@@ -12,6 +13,7 @@ export class Game {
   private container: HTMLElement;
   private gameLoop: GameLoop;
   private testCube: THREE.Mesh | null = null;
+  private playerModel: PlayerModel;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -27,6 +29,9 @@ export class Game {
     this.input = new InputManager();
 
     this.addTestCube();
+
+    this.playerModel = new PlayerModel();
+    this.scene.add(this.playerModel.mesh);
 
     window.addEventListener('resize', this.onResize);
 
@@ -65,6 +70,8 @@ export class Game {
       console.log('[Input] held: sprint');
     }
 
+    this.playerModel.update(dt);
+
     // Rotate test cube at consistent speed regardless of frame rate
     if (this.testCube) {
       this.testCube.rotation.y += 1.5 * dt;
@@ -89,6 +96,7 @@ export class Game {
   dispose(): void {
     this.gameLoop.stop();
     this.input.dispose();
+    this.playerModel.dispose();
     window.removeEventListener('resize', this.onResize);
   }
 }

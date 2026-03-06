@@ -150,7 +150,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-006: Player Model and Scene Placement
+## [DONE] T-006: Player Model and Scene Placement
 
 | Field | Value |
 |-------|-------|
@@ -162,6 +162,15 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Create a placeholder player mesh: an icosahedron (Three.js IcosahedronGeometry) with a custom material. Color: desaturated cyan (#607080). Add subtle vertex displacement noise that updates per frame (flickering effect — the player is unstable). Place at world origin. |
 | **Acceptance Criteria** | An icosahedron is visible at origin. Vertices subtly shift each frame, creating a "flickering" instability effect. Material is flat-colored (no texture). |
 | **Verification** | Visual inspection. The shape should visibly shimmer/flicker. |
+
+**Implementation Notes:**
+- Created `src/player/PlayerModel.ts` — icosahedron (radius 0.8, detail 1) with `MeshBasicMaterial` color `#607080`
+- Per-frame vertex displacement along normals using multi-frequency sin/cos pseudo-noise (speed 8, strength 0.04) creates a subtle flickering/shimmer effect
+- Base positions stored at construction time; each `update(dt)` displaces from base to avoid drift
+- Mesh positioned at Y=0.8 to sit on future ground plane
+- Integrated into `Game.ts`: added to scene, updated in game loop, disposed on cleanup
+- TypeScript compiles clean, Vite build succeeds
+- **Files changed:** `src/player/PlayerModel.ts` (new), `src/app/Game.ts` (modified)
 
 ---
 
