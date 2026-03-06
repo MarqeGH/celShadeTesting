@@ -98,7 +98,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-004: Event Bus
+## [DONE] T-004: Event Bus
 
 | Field | Value |
 |-------|-------|
@@ -110,6 +110,15 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Implement a typed event bus with `on(event, callback)`, `off(event, callback)`, `emit(event, data)`. Events should be typed via a central GameEvents interface. Include events: `PLAYER_DAMAGED`, `ENEMY_DAMAGED`, `ENEMY_DIED`, `ROOM_CLEARED`, `PLAYER_DIED`, `RUN_STARTED`, `RUN_ENDED`. |
 | **Acceptance Criteria** | Subscribing to an event and emitting it calls the callback with correct typed data. `off` removes subscription. No memory leaks from forgotten subscriptions. |
 | **Verification** | Unit test: subscribe, emit, verify callback. Test off() prevents callback. |
+
+**Implementation Notes:**
+- Created `src/app/EventBus.ts` — typed event bus using `Map<GameEventName, Set<Callback>>` for O(1) subscribe/unsubscribe with no duplicate listener risk
+- `GameEvents` interface defines typed payloads for all 7 events: `PLAYER_DAMAGED`, `ENEMY_DAMAGED`, `ENEMY_DIED`, `ROOM_CLEARED`, `PLAYER_DIED`, `RUN_STARTED`, `RUN_ENDED`
+- Generic `on<E>()`, `off<E>()`, `emit<E>()` methods enforce type safety — callbacks receive correctly typed data
+- `off()` removes from Set and cleans up empty entries to prevent memory leaks
+- `clear()` method for full teardown/dispose
+- TypeScript compiles clean, Vite build succeeds
+- **Files changed:** `src/app/EventBus.ts` (new)
 
 ---
 
