@@ -346,7 +346,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-014: Collision System (AABB)
+## [DONE] T-014: Collision System (AABB)
 
 | Field | Value |
 |-------|-------|
@@ -358,6 +358,16 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Implement AABB (axis-aligned bounding box) and sphere collision detection. Functions: `testAABBvsAABB(a, b)`, `testSphereVsSphere(a, b)`, `testSphereVsAABB(sphere, aabb)`. Return collision data: `{ hit: boolean, overlap: Vec3, normal: Vec3 }`. Also implement `resolveCollision(entity, collision)` that pushes the entity out of overlap. |
 | **Acceptance Criteria** | AABB vs AABB detects overlaps correctly. Sphere vs AABB detects overlaps correctly. Resolution pushes entities apart along the minimum overlap axis. |
 | **Verification** | Unit tests with known overlapping and non-overlapping shapes. |
+
+**Implementation Notes:**
+- Created `src/engine/CollisionSystem.ts` with interfaces `AABB`, `SphereCollider`, and `CollisionResult`
+- `testAABBvsAABB(a, b)` — computes overlap on all 3 axes, returns minimum overlap axis as push-out direction with correct sign based on center-to-center direction
+- `testSphereVsSphere(a, b)` — distance check against radius sum, normal points from B to A, handles coincident center edge case
+- `testSphereVsAABB(sphere, aabb)` — finds closest point on AABB to sphere center, handles both external contact and sphere-center-inside-AABB cases with minimum-axis push-out
+- `resolveCollision(entityPosition, collision)` — adds overlap vector to entity position to push it out
+- All functions use pre-allocated scratch vectors (`_overlap`, `_normal`, `_closest`, `_diff`) and clone only for results to avoid per-call allocation in hot path
+- TypeScript compiles clean, Vite build succeeds
+- **Files changed:** `src/engine/CollisionSystem.ts` (new)
 
 ---
 
