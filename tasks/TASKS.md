@@ -503,7 +503,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-020: Base Enemy Class
+## [DONE] T-020: Base Enemy Class
 
 | Field | Value |
 |-------|-------|
@@ -515,6 +515,22 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Create abstract BaseEnemy class. Owns: Three.js mesh, FSM instance, stats (HP, speed, poise), hurtbox, current position/rotation. Methods: `update(dt)`, `takeDamage(amount)`, `die()`, `getPosition()`. On takeDamage: reduce HP, check poise for stagger, flash mesh red briefly. On die: emit ENEMY_DIED event, play death effect (mesh shatters into particles), remove from scene after delay. |
 | **Acceptance Criteria** | BaseEnemy can be instantiated (via subclass). Has working HP and damage reception. Death triggers cleanup. Stagger check against poise works. Visual feedback on hit (red flash). |
 | **Verification** | Spawn a test enemy, hit it, verify HP decreases. Kill it, verify cleanup and event. |
+
+**Implementation Notes:**
+- Created `src/enemies/BaseEnemy.ts` — abstract class implementing `CombatEntity` interface
+- `EnemyStats` interface: maxHp, hp, moveSpeed, turnSpeed, poise, maxPoise, poiseRegenDelay, poiseRegenRate
+- `EnemyContext` bundles enemy ref + player position for FSM states
+- Subclasses implement `createMesh()` and `initFSM()`, call `initialize()` after `super()`
+- `takeDamage(amount)` reduces HP, triggers red hit flash (0.12s), calls `die()` at 0 HP
+- `applyPoiseDamage(staggerDamage)` reduces poise; on break → resets poise, transitions FSM to 'staggered'
+- Poise regens after configurable delay at configurable rate
+- Hit flash: swaps cel material `uBaseColor` to red, restores after timer. Supports ShaderMaterial and standard materials
+- `die()`: unregisters hurtbox/hitboxes, emits `ENEMY_DIED` event, spawns 8 tetrahedron shatter pieces with velocity + gravity, fades via scale over 1.5s, then removes from scene
+- Helper methods: `moveToward()`, `faceDirection()` (clamped turn speed), `distanceTo()` for subclass AI
+- Auto-incrementing entity IDs starting at 100 (player is 1)
+- All scratch vectors pre-allocated to avoid per-frame allocation
+- TypeScript compiles clean, Vite build succeeds
+- **Files changed:** `src/enemies/BaseEnemy.ts` (new)
 
 ---
 
