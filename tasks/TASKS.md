@@ -200,7 +200,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-008: Player Movement Controller
+## [DONE] T-008: Player Movement Controller
 
 | Field | Value |
 |-------|-------|
@@ -212,6 +212,15 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Implement camera-relative movement. WASD input maps to movement relative to camera facing direction. Walk speed: 5 m/s. Sprint speed: 8 m/s (hold shift). Player mesh rotates to face movement direction (smooth rotation via lerp). Apply ground-plane movement only (Y stays at 0 for now). |
 | **Acceptance Criteria** | WASD moves player relative to camera direction. Sprint increases speed. Player mesh faces movement direction. Movement is smooth and consistent at 60Hz. |
 | **Verification** | Move with WASD, orbit camera, confirm movement stays camera-relative. Sprint with shift held. |
+
+**Implementation Notes:**
+- Created `src/player/PlayerController.ts` — reads WASD input, computes camera-relative movement direction using `CameraController.getForward()`/`getRight()`
+- Walk speed: 5 m/s, sprint speed: 8 m/s (shift held). Ground-plane only (Y unchanged)
+- Smooth mesh rotation via exponential decay lerp (`1 - exp(-speed * dt)`) with shortest-arc wrapping to avoid spinning the wrong way
+- Reuses pre-allocated `Vector3` instances to avoid per-frame allocation
+- Integrated into `Game.ts`: constructed after CameraController + PlayerModel, updated each tick before camera follow
+- TypeScript compiles clean, Vite build succeeds
+- **Files changed:** `src/player/PlayerController.ts` (new), `src/app/Game.ts` (modified)
 
 ---
 

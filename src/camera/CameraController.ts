@@ -91,7 +91,7 @@ export class CameraController {
   /** Right direction on the XZ plane based on current yaw */
   getRight(out?: THREE.Vector3): THREE.Vector3 {
     const v = out ?? new THREE.Vector3();
-    v.set(-Math.cos(this.yaw), 0, Math.sin(this.yaw));
+    v.set(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
     return v;
   }
 }

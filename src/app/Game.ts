@@ -3,6 +3,7 @@ import { Renderer } from '../rendering/Renderer';
 import { GameLoop } from './GameLoop';
 import { InputManager, GameAction } from './InputManager';
 import { PlayerModel } from '../player/PlayerModel';
+import { PlayerController } from '../player/PlayerController';
 import { CameraController } from '../camera/CameraController';
 
 export class Game {
@@ -16,6 +17,7 @@ export class Game {
   private gameLoop: GameLoop;
   private testCube: THREE.Mesh | null = null;
   private playerModel: PlayerModel;
+  private playerController: PlayerController;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -33,6 +35,8 @@ export class Game {
 
     this.playerModel = new PlayerModel();
     this.scene.add(this.playerModel.mesh);
+
+    this.playerController = new PlayerController(this.input, this.cameraController, this.playerModel);
 
     window.addEventListener('resize', this.onResize);
 
@@ -71,6 +75,7 @@ export class Game {
       console.log('[Input] held: sprint');
     }
 
+    this.playerController.update(dt);
     this.playerModel.update(dt);
 
     // Update camera orbit and follow
