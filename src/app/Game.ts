@@ -17,6 +17,7 @@ import { EventBus } from './EventBus';
 import { BaseEnemy } from '../enemies/BaseEnemy';
 import { EnemyFactory } from '../enemies/EnemyFactory';
 import '../enemies/TriangleShard'; // side-effect: registers in EnemyRegistry
+import { CubeSentinel } from '../enemies/CubeSentinel'; // side-effect: registers in EnemyRegistry
 
 export class Game {
   readonly scene: THREE.Scene;
@@ -117,15 +118,35 @@ export class Game {
   }
 
   private spawnEnemies(): void {
-    const spawnPositions = [
+    const triangleSpawns = [
       new THREE.Vector3(5, 0, 5),
       new THREE.Vector3(-5, 0, -5),
       new THREE.Vector3(6, 0, -4),
     ];
 
-    for (const pos of spawnPositions) {
+    for (const pos of triangleSpawns) {
       EnemyFactory.create('triangle-shard', pos, this.eventBus, this.hitboxManager)
         .then((enemy) => {
+          this.enemies.push(enemy);
+          this.scene.add(enemy.group);
+          this.combatSystem.registerEntity(enemy);
+        })
+        .catch((err) => {
+          console.error('[Game] Failed to spawn enemy:', err);
+        });
+    }
+
+    const cubeSpawns = [
+      new THREE.Vector3(-7, 0, 6),
+      new THREE.Vector3(7, 0, -6),
+    ];
+
+    for (const pos of cubeSpawns) {
+      EnemyFactory.create('cube-sentinel', pos, this.eventBus, this.hitboxManager)
+        .then((enemy) => {
+          if (enemy instanceof CubeSentinel) {
+            enemy.setScene(this.scene);
+          }
           this.enemies.push(enemy);
           this.scene.add(enemy.group);
           this.combatSystem.registerEntity(enemy);

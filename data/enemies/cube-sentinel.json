@@ -1,0 +1,107 @@
+{
+  "id": "cube-sentinel",
+  "name": "Cube Sentinel",
+  "shape": "cube",
+  "stats": {
+    "maxHP": 25,
+    "moveSpeed": 3.5,
+    "turnSpeed": 120,
+    "poise": 15,
+    "poiseRegenDelay": 2500,
+    "poiseRegenRate": 4
+  },
+  "perception": {
+    "aggroRange": 15,
+    "attackRange": 12,
+    "retreatRange": 4,
+    "losRequired": true
+  },
+  "attacks": [
+    {
+      "id": "shard_bolt",
+      "name": "Shard Bolt",
+      "telegraphDuration": 500,
+      "activeDuration": 100,
+      "recoveryDuration": 800,
+      "damage": 12,
+      "staggerDamage": 5,
+      "range": 15,
+      "hitboxShape": "sphere",
+      "hitboxSize": { "radius": 0.3 },
+      "movementDuringAttack": null,
+      "projectile": {
+        "shape": "cube",
+        "speed": 10,
+        "lifetime": 2000,
+        "size": 0.2,
+        "homing": false
+      }
+    },
+    {
+      "id": "scatter_shot",
+      "name": "Scatter Shot",
+      "telegraphDuration": 700,
+      "activeDuration": 100,
+      "recoveryDuration": 1200,
+      "damage": 8,
+      "staggerDamage": 3,
+      "range": 12,
+      "hitboxShape": "sphere",
+      "hitboxSize": { "radius": 0.25 },
+      "movementDuringAttack": null,
+      "projectile": {
+        "shape": "cube",
+        "speed": 10,
+        "lifetime": 2000,
+        "size": 0.15,
+        "homing": false
+      }
+    }
+  ],
+  "drops": {
+    "shards": { "min": 2, "max": 5 },
+    "fragmentChance": 0.08
+  },
+  "fsm": {
+    "initialState": "idle",
+    "states": [
+      {
+        "name": "idle",
+        "transitions": [
+          { "to": "alert", "condition": "playerInAggroRange" }
+        ]
+      },
+      {
+        "name": "alert",
+        "transitions": [
+          { "to": "attack", "condition": "playerInAttackRange" },
+          { "to": "idle", "condition": "playerOutOfAggroRange" },
+          { "to": "retreat", "condition": "playerTooClose" }
+        ]
+      },
+      {
+        "name": "attack",
+        "params": { "attackPool": ["shard_bolt", "scatter_shot"], "attackCooldown": 600 },
+        "transitions": [
+          { "to": "retreat", "condition": "playerTooClose" },
+          { "to": "alert", "condition": "attackComplete_and_playerOutOfAttackRange" }
+        ]
+      },
+      {
+        "name": "retreat",
+        "params": { "targetDistance": 10 },
+        "transitions": [
+          { "to": "attack", "condition": "atTargetDistance_and_playerInAttackRange" },
+          { "to": "alert", "condition": "atTargetDistance" }
+        ]
+      },
+      {
+        "name": "staggered",
+        "params": { "duration": 800 },
+        "transitions": [
+          { "to": "alert", "condition": "staggerComplete" }
+        ]
+      }
+    ]
+  }
+}

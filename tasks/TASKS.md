@@ -586,7 +586,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-023: Cube Sentinel Enemy
+## [DONE] T-023: Cube Sentinel Enemy
 
 | Field | Value |
 |-------|-------|
@@ -598,6 +598,18 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Implement the Cube Sentinel per ENEMY_BIBLE.md. Mesh: BoxGeometry 1.2m. Rotates slowly on Y-axis. FSM: idle, alert (face player), attack (fire projectile), retreat (if player too close). Shard Bolt: 500ms telegraph, fires cube projectile at 10m/s. Scatter Shot: 700ms telegraph, fires 3 bolts in spread. Projectiles use ObjectPool. 25 HP. Retreats if player < 4m. |
 | **Acceptance Criteria** | Cube Sentinel spawns, maintains distance, fires projectiles at player. Retreats when player closes in. Projectiles travel in correct direction at correct speed. Projectiles despawn after lifetime. |
 | **Verification** | Spawn in test arena. Approach and observe retreat. Stand at range and observe projectile attacks. |
+
+**Implementation Notes:**
+- Created `data/enemies/cube-sentinel.json` — 25 HP, 3.5 m/s move speed, 15m aggro range, 12m attack range, 4m retreat range. Two attacks: Shard Bolt (500ms telegraph, 12 dmg, single projectile) and Scatter Shot (700ms telegraph, 8 dmg, 3-bolt spread)
+- Created `src/engine/ObjectPool.ts` — generic `ObjectPool<T>` with `acquire()`, `release()`, `forEachActive()`, `releaseAll()`. Factory + reset function pattern. Used by CubeSentinel for projectile reuse
+- Created `src/enemies/CubeSentinel.ts` — extends `BaseEnemy` with 1.2m `BoxGeometry` cube mesh, cel-shaded in amber (#cc8833)
+- FSM states: `SentinelIdleState` (slow Y rotation, aggro at 15m), `SentinelAlertState` (face player, check attack/retreat ranges), `SentinelAttackState` (telegraph with orange glow + vibration → fire projectile(s) → recovery), `SentinelAttackCooldownState` (600ms pause), `SentinelRetreatState` (back away to 10m while facing player), `SentinelStaggeredState` (800ms stun)
+- Projectile system: `ObjectPool<Projectile>` with pool size 6. Each projectile is a small spinning cube with cel-shaded orange material, sphere hitbox, 10m/s speed, 2s lifetime. Scatter Shot fires 3 bolts at ±15° spread
+- Telegraph visual: single-face glow (Shard Bolt) vs all-faces glow (Scatter Shot) via shader `uBaseColor` swap
+- `setScene()` method for adding/removing projectile meshes from the scene graph
+- Integrated into `Game.ts`: 2 Cube Sentinels spawned at (-7,0,6) and (7,0,-6). Side-effect import registers in `EnemyRegistry`
+- TypeScript compiles clean, Vite build succeeds
+- **Files changed:** `data/enemies/cube-sentinel.json` (new), `src/engine/ObjectPool.ts` (new), `src/enemies/CubeSentinel.ts` (new), `src/app/Game.ts` (modified)
 
 ---
 
