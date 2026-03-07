@@ -60,6 +60,8 @@ export class EncounterManager {
   private spawnPoints: THREE.Vector3[] = [];
   // Player position reference for spawn point strategies
   private playerPosition: THREE.Vector3 = new THREE.Vector3();
+  // True while async enemy spawning is in-flight (prevents premature wave-clear)
+  private isSpawning = false;
 
   constructor(
     eventBus: EventBus,
@@ -143,7 +145,7 @@ export class EncounterManager {
       return;
     }
 
-    if (this.state === 'active') {
+    if (this.state === 'active' && !this.isSpawning) {
       // Remove dead enemies from wave tracking
       for (let i = this.waveEnemies.length - 1; i >= 0; i--) {
         if (this.waveEnemies[i].isDead()) {
@@ -199,6 +201,7 @@ export class EncounterManager {
     if (!this.encounter) return;
     if (waveIndex >= this.encounter.waves.length) return;
 
+    this.isSpawning = true;
     const wave = this.encounter.waves[waveIndex];
     this.waveEnemies = [];
 
@@ -242,6 +245,7 @@ export class EncounterManager {
     }
 
     await Promise.all(spawnPromises);
+    this.isSpawning = false;
 
     console.log(
       `[EncounterManager] Wave ${waveIndex + 1}/${this.encounter.waves.length} spawned ` +

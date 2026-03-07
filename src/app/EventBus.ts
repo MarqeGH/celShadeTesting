@@ -9,6 +9,7 @@ export interface GameEvents {
   PLAYER_DAMAGED: { amount: number; currentHP: number; sourceId?: string };
   ENEMY_DAMAGED: { enemyId: string; amount: number; currentHP: number; sourceId?: string; position: { x: number; y: number; z: number } };
   ENEMY_DIED: { enemyId: string; position: { x: number; y: number; z: number } };
+  SHARD_COLLECTED: { amount: number; totalShards: number; position: { x: number; y: number; z: number } };
   ROOM_CLEARED: { roomId: string };
   PLAYER_DIED: {};
   RUN_STARTED: {};

@@ -134,7 +134,7 @@ export class HUD {
   private shardCount = 0;
   private lastHealCharges = -1;
 
-  private onEnemyDied: (data: { enemyId: string; position: { x: number; y: number; z: number } }) => void;
+  private onShardCollected: (data: { amount: number; totalShards: number; position: { x: number; y: number; z: number } }) => void;
 
   constructor(
     private stats: PlayerStats,
@@ -202,11 +202,11 @@ export class HUD {
     this.root.appendChild(right);
 
     // Subscribe to events
-    this.onEnemyDied = () => {
-      this.shardCount++;
+    this.onShardCollected = (data) => {
+      this.shardCount = data.totalShards;
       this.shardsValue.textContent = String(this.shardCount);
     };
-    this.eventBus.on('ENEMY_DIED', this.onEnemyDied);
+    this.eventBus.on('SHARD_COLLECTED', this.onShardCollected);
 
     // Initial heal charge render
     this.rebuildHealCharges();
@@ -265,7 +265,7 @@ export class HUD {
   }
 
   dispose(): void {
-    this.eventBus.off('ENEMY_DIED', this.onEnemyDied);
+    this.eventBus.off('SHARD_COLLECTED', this.onShardCollected);
     this.root.remove();
   }
 }

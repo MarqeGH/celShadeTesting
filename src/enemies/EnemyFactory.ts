@@ -174,6 +174,11 @@ export class EnemyFactory {
     await Promise.all(typeIds.map((id) => loadEnemyData(id)));
   }
 
+  /** Get cached enemy data by type ID (returns undefined if not yet loaded). */
+  static getCachedData(typeId: string): EnemyData | undefined {
+    return dataCache.get(typeId);
+  }
+
   /** Clear the JSON data cache. */
   static clearCache(): void {
     dataCache.clear();

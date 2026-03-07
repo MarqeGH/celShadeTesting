@@ -880,7 +880,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-034: Camera Shake
+## [DONE] T-034: Camera Shake
 
 | Field | Value |
 |-------|-------|
@@ -893,9 +893,21 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Acceptance Criteria** | Camera shakes on player damage. Shake intensity varies by damage amount. Shake decays smoothly. Does not interfere with normal camera operation after decay. |
 | **Verification** | Take damage, verify visible shake. Verify shake stops after duration. |
 
+**Implementation Notes:**
+- Created `src/camera/CameraShake.ts` — subscribes to `PLAYER_DAMAGED` events via EventBus, applies decaying additive offset to camera position
+- Damage-based intensity: light hits (<15 dmg) use intensity 0.15 / duration 200ms, heavy hits (>=15 dmg) use intensity 0.4 / duration 400ms
+- Linear decay: offset strength falls from full intensity to 0 over the shake duration
+- Sine-based pseudo-random offsets with different frequencies per axis (7.3, 11.7, 5.1) prevent repetitive patterns. Z-axis attenuated to 0.5x for natural feel
+- Previous frame's offset is subtracted before applying new offset, keeping the base camera position clean for CameraController
+- `trigger(intensity, duration)` public method allows manual shake from other systems. Stronger shake wins over weaker active shake
+- `dispose()` removes any remaining offset so camera returns to clean state
+- Integrated into `Game.ts`: constructed after EventBus, updated after `cameraController.update(dt)`, disposed on cleanup
+- TypeScript compiles clean, Vite build succeeds
+- **Files changed:** `src/camera/CameraShake.ts` (new), `src/app/Game.ts` (modified)
+
 ---
 
-## T-035: Pickup System
+## [DONE] T-035: Pickup System
 
 | Field | Value |
 |-------|-------|
@@ -907,6 +919,18 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | When enemies die, they drop shard pickups (small glowing geometric shapes). Pickups float and rotate. Player auto-collects pickups within 2m radius. On collection: add shards to RunState, emit event, play collection particle effect. Shard count from enemy data (random between min and max). |
 | **Acceptance Criteria** | Killing enemy spawns shard pickup at death position. Pickup is visible and animated. Player auto-collects when within range. RunState shard count increases. Collection has visual/audio feedback. |
 | **Verification** | Kill enemy, walk over shard, verify collection and shard count increase on HUD. |
+
+**Implementation Notes:**
+- Created `src/interactions/Interactable.ts` — base interface for world interactables (id, getPosition, isActive, update, dispose)
+- Created `src/interactions/PickupSystem.ts` — listens for `ENEMY_DIED`, spawns octahedron shard pickups at death position using drop data from enemy JSON (`drops.shards.min`/`max`)
+- Pickups use shared `OctahedronGeometry` + cel-shaded material (gold `#e0d060`), float (sin wave), and rotate each frame
+- Auto-collection at 2m radius; magnetic pull at 3m radius draws pickups toward player
+- 30s despawn lifetime; scattered spawn spread of 1.2m to avoid stacking
+- Added `SHARD_COLLECTED` event to `EventBus` with `{ amount, totalShards, position }`
+- Updated `HUD` to listen for `SHARD_COLLECTED` instead of `ENEMY_DIED` for accurate shard display
+- Added `getCachedData()` static method to `EnemyFactory` for drop data lookup
+- Integrated `PickupSystem` into `Game.ts` (construct, update, dispose)
+- **Files changed:** `src/interactions/Interactable.ts` (new), `src/interactions/PickupSystem.ts` (new), `src/app/EventBus.ts` (modified), `src/enemies/EnemyFactory.ts` (modified), `src/ui/HUD.ts` (modified), `src/app/Game.ts` (modified)
 
 ---
 
@@ -1094,6 +1118,21 @@ T-014 ── T-015, T-018 ── T-019 ── T-031           │
                     │                              │
                     └── T-032                      │
 ```
+
+---
+
+## T-BUG-001: Enemy Wall Collision
+
+| Field | Value |
+|-------|-------|
+| **Category** | Enemy |
+| **Work Type** | `gameplay` |
+| **Priority** | P1 |
+| **Depends On** | T-014, T-020, T-013 |
+| **Target Files** | `src/enemies/BaseEnemy.ts`, `src/world/EncounterManager.ts`, `src/app/Game.ts` |
+| **Description** | Enemies (especially Cube Sentinels in retreat mode) walk through arena walls because they have no wall collision. Add sphere collider to BaseEnemy and resolve against wall AABBs after each movement update. EncounterManager needs access to the current room's wall colliders to pass them to enemies. |
+| **Acceptance Criteria** | Enemies cannot walk through walls. Cube Sentinels stop retreating at wall boundaries. Triangle Shards cannot chase through walls. Enemy movement slides along walls like the player does. |
+| **Verification** | Spawn enemies near walls. Observe Cube Sentinel retreat stops at wall. Chase Triangle Shard into a corner, verify it stays inside arena. |
 
 ---
 

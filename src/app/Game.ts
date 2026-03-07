@@ -9,6 +9,7 @@ import { PlayerStats } from '../player/PlayerStats';
 import { PlayerStateMachine } from '../player/PlayerStateMachine';
 import { CameraController } from '../camera/CameraController';
 import { LockOnSystem } from '../camera/LockOnSystem';
+import { CameraShake } from '../camera/CameraShake';
 import { createCelMaterial } from '../rendering/CelShadingPipeline';
 import { TestArena } from '../world/RoomModule';
 import { WeaponSystem } from '../combat/WeaponSystem';
@@ -27,6 +28,7 @@ import { DoorSystem } from '../world/DoorSystem';
 import { RoomAssembler } from '../world/RoomAssembler';
 import { RoomModule, type RoomModuleData, type ExitDoor } from '../world/RoomModule';
 import { AssetLoader } from '../engine/AssetLoader';
+import { PickupSystem } from '../interactions/PickupSystem';
 
 export class Game {
   readonly scene: THREE.Scene;
@@ -55,9 +57,11 @@ export class Game {
   private debugOverlay: DebugOverlay;
   private encounterManager: EncounterManager;
   private lockOnSystem: LockOnSystem;
+  private cameraShake: CameraShake;
   private doorSystem: DoorSystem;
   private roomAssembler: RoomAssembler;
   private assetLoader: AssetLoader;
+  private pickupSystem: PickupSystem;
   private currentRoom: RoomModule | null = null;
 
   constructor(container: HTMLElement) {
@@ -132,6 +136,9 @@ export class Game {
       this.eventBus, this.hitboxManager, this.combatSystem, this.staggerSystem, this.scene,
     );
 
+    // Pickup system — listens for ENEMY_DIED, spawns shard pickups
+    this.pickupSystem = new PickupSystem(this.scene, this.eventBus);
+
     // Lock-on system
     this.lockOnSystem = new LockOnSystem(
       this.input,
@@ -139,6 +146,9 @@ export class Game {
       () => this.encounterManager.getEnemies(),
     );
     this.lockOnSystem.attachUI(container, this.camera);
+
+    // Camera shake
+    this.cameraShake = new CameraShake(this.camera, this.eventBus);
 
     // Damage numbers
     this.damageNumbers = new DamageNumbers(
@@ -263,6 +273,7 @@ export class Game {
 
     this.combatSystem.update();
     this.staggerSystem.update(dt);
+    this.pickupSystem.update(dt, playerPos);
     this.doorSystem.update(dt);
     this.playerStats.update(dt);
     this.uiManager.update();
@@ -275,6 +286,7 @@ export class Game {
 
     // Update camera orbit and follow
     this.cameraController.update(dt, this.playerModel.mesh.position);
+    this.cameraShake.update(dt);
 
     // Rotate test cube at consistent speed regardless of frame rate
     if (this.testCube) {
@@ -367,7 +379,9 @@ export class Game {
     this.testArena.dispose();
     this.postProcessing.dispose();
     this.encounterManager.dispose();
+    this.pickupSystem.dispose();
     this.lockOnSystem.dispose();
+    this.cameraShake.dispose();
     this.doorSystem.dispose();
     this.assetLoader.dispose();
     if (this.currentRoom) {
