@@ -934,7 +934,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-036: Run State Manager
+## [DONE] T-036: Run State Manager
 
 | Field | Value |
 |-------|-------|
@@ -946,6 +946,16 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Implement RunState singleton that tracks: current zone, current room index, total shards collected, equipped weapon ID, active buffs, heal charges remaining, rooms cleared count, enemies killed count. Provides `startRun()` (reset all), `endRun()` (calculate rewards: 50% shards kept as meta-currency). Emits RUN_STARTED and RUN_ENDED events. |
 | **Acceptance Criteria** | RunState correctly tracks all run variables. startRun resets state. endRun calculates rewards. Events fire correctly. |
 | **Verification** | Start run, modify state values, end run, verify reward calculation. |
+
+**Implementation Notes:**
+- Created `src/progression/RunState.ts` — tracks all run variables: currentZone, currentRoomIndex, totalShards, equippedWeaponId, activeBuffs, healCharges, roomsCleared, enemiesKilled
+- `startRun(zone)` resets all state to defaults (3 heal charges, 'fist' weapon) and emits `RUN_STARTED`
+- `endRun(survived)` calculates rewards (50% shards kept as meta-currency), emits `RUN_ENDED`, returns `RunRewards` summary
+- Auto-subscribes to `ENEMY_DIED`, `ROOM_CLEARED`, `SHARD_COLLECTED` events during active run to increment counters
+- Helper methods: `advanceRoom()`, `useHealCharge()`, `addBuff()`/`removeBuff()`/`hasBuff()` for buff management
+- Bound handlers stored as class properties for clean subscribe/unsubscribe lifecycle
+- TypeScript compiles clean, Vite build succeeds
+- **Files changed:** `src/progression/RunState.ts` (new)
 
 ---
 
