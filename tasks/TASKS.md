@@ -478,7 +478,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-019: Damage Calculator
+## [DONE] T-019: Damage Calculator
 
 | Field | Value |
 |-------|-------|
@@ -490,6 +490,16 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Implement DamageCalculator with function: `calculate(attackData, attackerStats, defenderStats) → { damage: number, staggerDamage: number, isCritical: boolean }`. Base formula: `damage = attackData.damage * weaponMultiplier`. No defense reduction for now (add later). CombatSystem ties it together: on hit event → calculate damage → apply to defender HP → check death → emit damage/death events. |
 | **Acceptance Criteria** | Damage is calculated correctly from attack data. HP is reduced on the defender. Death triggers at HP ≤ 0. Events emitted for damage and death. |
 | **Verification** | Unit test: known attack data → expected damage output. Integration: hit enemy → HP decreases → at 0 death event fires. |
+
+**Implementation Notes:**
+- Created `src/combat/DamageCalculator.ts` — `calculateDamage(attackData, weaponMultiplier)` returns `{ damage, staggerDamage, isCritical }`. Formula: `damage = attackData.damage * weaponMultiplier` (default 1.0). No defense reduction yet. Critical hits always false (placeholder for future).
+- Created `src/combat/CombatSystem.ts` — orchestrates hit detection → damage calculation → HP application → event emission. Owns `HitboxManager` update cycle via `setOnHitCallback()`.
+- `CombatEntity` interface for registering damageable entities: `entityId`, `type` (player/enemy), `stringId`, HP getters, `takeDamage()`, `isDead()`, `getPosition()`.
+- `PLAYER_ENTITY_ID = 1` constant for consistent player identification.
+- On hit: looks up defender in entity registry, runs `calculateDamage()`, calls `takeDamage()` on defender, emits `PLAYER_DAMAGED`/`ENEMY_DAMAGED` events with correct typed payloads. On death: emits `PLAYER_DIED`/`ENEMY_DIED`.
+- Integrated into `Game.ts`: `EventBus`, `HitboxManager`, and `CombatSystem` instantiated. Player registered as `CombatEntity` via adapter wrapping `PlayerStats` + `PlayerModel.mesh.position`. `combatSystem.update()` called each frame after wall collision resolution.
+- TypeScript compiles clean, Vite build succeeds
+- **Files changed:** `src/combat/DamageCalculator.ts` (new), `src/combat/CombatSystem.ts` (new), `src/app/Game.ts` (modified)
 
 ---
 

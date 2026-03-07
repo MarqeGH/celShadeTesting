@@ -11,6 +11,9 @@ import { CameraController } from '../camera/CameraController';
 import { createCelMaterial } from '../rendering/CelShadingPipeline';
 import { TestArena } from '../world/RoomModule';
 import { WeaponSystem } from '../combat/WeaponSystem';
+import { HitboxManager } from '../combat/HitboxManager';
+import { CombatSystem, CombatEntity, PLAYER_ENTITY_ID } from '../combat/CombatSystem';
+import { EventBus } from './EventBus';
 
 export class Game {
   readonly scene: THREE.Scene;
@@ -18,6 +21,7 @@ export class Game {
   readonly renderer: Renderer;
   readonly input: InputManager;
   readonly cameraController: CameraController;
+  readonly eventBus: EventBus;
 
   private container: HTMLElement;
   private gameLoop: GameLoop;
@@ -28,6 +32,8 @@ export class Game {
   private playerController: PlayerController;
   private playerStats: PlayerStats;
   private weaponSystem: WeaponSystem;
+  private hitboxManager: HitboxManager;
+  private combatSystem: CombatSystem;
   private playerStateMachine: PlayerStateMachine;
 
   constructor(container: HTMLElement) {
@@ -64,6 +70,26 @@ export class Game {
       this.input, this.playerController, this.playerStats, this.playerModel, this.cameraController, this.weaponSystem,
     );
 
+    // Combat system: EventBus → HitboxManager → CombatSystem
+    this.eventBus = new EventBus();
+    this.hitboxManager = new HitboxManager();
+    this.combatSystem = new CombatSystem(this.hitboxManager, this.eventBus);
+
+    // Register player as a damageable combat entity
+    const playerStats = this.playerStats;
+    const playerMesh = this.playerModel.mesh;
+    const playerEntity: CombatEntity = {
+      entityId: PLAYER_ENTITY_ID,
+      type: 'player',
+      stringId: 'player',
+      getHp: () => playerStats.hp,
+      getMaxHp: () => playerStats.maxHp,
+      takeDamage: (amount) => playerStats.takeDamage(amount),
+      isDead: () => playerStats.isDead,
+      getPosition: () => playerMesh.position,
+    };
+    this.combatSystem.registerEntity(playerEntity);
+
     this.postProcessing = new PostProcessing(
       this.renderer.renderer,
       this.scene,
@@ -95,6 +121,7 @@ export class Game {
 
     this.playerStateMachine.update(dt);
     this.playerController.resolveWallCollisions(this.testArena.wallColliders);
+    this.combatSystem.update();
     this.playerStats.update(dt);
     this.playerModel.update(dt);
 
@@ -136,6 +163,8 @@ export class Game {
     this.playerModel.dispose();
     this.testArena.dispose();
     this.postProcessing.dispose();
+    this.hitboxManager.clear();
+    this.eventBus.clear();
     window.removeEventListener('keydown', this.onToggleOutline);
     window.removeEventListener('resize', this.onResize);
   }
