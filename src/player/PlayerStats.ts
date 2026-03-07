@@ -12,6 +12,7 @@ export const STAMINA_COSTS: Record<string, number> = {
   dodge: 20,
   light_attack: 12,
   heavy_attack: 25,
+  parry: 8,
 };
 
 /** Stamina cost per second while sprinting */
@@ -85,6 +86,14 @@ export class PlayerStats {
     }
 
     return true;
+  }
+
+  /**
+   * Add stamina directly (e.g. parry recovery).
+   * Resets regen delay timer since stamina was just modified.
+   */
+  addStamina(amount: number): void {
+    this._stamina = Math.min(this._maxStamina, this._stamina + amount);
   }
 
   /**

@@ -137,6 +137,17 @@ export class Game {
       () => this.playerStateMachine.fsm.setState('stagger'),
     );
 
+    // Register parry handler so CombatSystem can check parry state on player hits
+    this.combatSystem.setParryHandler({
+      check: () => {
+        if (this.playerStateMachine.isInParryWindow) return 'success';
+        if (this.playerStateMachine.isInParryRecovery) return 'fail';
+        return null;
+      },
+      onSuccess: () => this.playerStateMachine.notifyParrySuccess(),
+      onFail: () => this.playerStateMachine.notifyParryFail(),
+    });
+
     // Encounter manager
     this.encounterManager = new EncounterManager(
       this.eventBus, this.hitboxManager, this.combatSystem, this.staggerSystem, this.scene,

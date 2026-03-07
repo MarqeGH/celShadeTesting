@@ -26,6 +26,23 @@ export interface CombatEntity {
   getPosition(): THREE.Vector3;
 }
 
+// ── Parry handler types ─────────────────────────────────────────
+
+/** Result of checking whether the player is parrying an incoming hit */
+export type ParryResult = 'success' | 'fail' | null;
+
+/**
+ * Parry handler registered by the game to integrate player FSM with combat.
+ */
+export interface ParryHandler {
+  /** Check parry state: 'success' if in window, 'fail' if in parry recovery, null otherwise */
+  check: (attackerId: number) => ParryResult;
+  /** Called on successful parry (grants buff, stamina recovery) */
+  onSuccess: (attackerId: number) => void;
+  /** Called on failed parry (forces extra stagger) */
+  onFail: () => void;
+}
+
 // ── CombatSystem ─────────────────────────────────────────────────
 
 /**
@@ -42,6 +59,7 @@ export class CombatSystem {
   private eventBus: EventBus;
   private staggerSystem: StaggerSystem;
   private entities = new Map<number, CombatEntity>();
+  private parryHandler: ParryHandler | null = null;
 
   constructor(hitboxManager: HitboxManager, eventBus: EventBus, staggerSystem: StaggerSystem) {
     this.hitboxManager = hitboxManager;
@@ -66,6 +84,14 @@ export class CombatSystem {
     return this.entities.get(entityId);
   }
 
+  /**
+   * Register a parry handler for player-targeted hits.
+   * Called before damage is applied; can deflect attacks or add extra punishment.
+   */
+  setParryHandler(handler: ParryHandler): void {
+    this.parryHandler = handler;
+  }
+
   /** Run hitbox overlap detection. Call once per frame. */
   update(): void {
     this.hitboxManager.update();
@@ -76,6 +102,24 @@ export class CombatSystem {
   private onHit(hit: HitResult): void {
     const defender = this.entities.get(hit.defenderId);
     if (!defender) return;
+
+    // ── Parry check for player-targeted hits ──────────────────
+    if (defender.type === 'player' && this.parryHandler) {
+      const parryResult = this.parryHandler.check(hit.attackerId);
+
+      if (parryResult === 'success') {
+        // Successful parry: deflect attack, stagger attacker
+        this.staggerSystem.applyStaggerDamage(hit.attackerId, 9999);
+        this.parryHandler.onSuccess(hit.attackerId);
+        return; // no damage applied
+      }
+
+      if (parryResult === 'fail') {
+        // Failed parry: take full damage + extra stagger punishment
+        // Damage falls through to normal processing below
+        this.parryHandler.onFail();
+      }
+    }
 
     const result = calculateDamage(hit.attackData);
     const remainingHp = defender.takeDamage(result.damage);

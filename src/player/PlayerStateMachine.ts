@@ -37,6 +37,10 @@ function checkActionTransitions(input: InputManager, stats: PlayerStats): string
     stats.drainStamina('dodge');
     return 'dodge';
   }
+  if (input.justPressed('parry') && stats.canPerformAction('parry')) {
+    stats.drainStamina('parry');
+    return 'parry';
+  }
   if (input.justPressed('lightAttack') && stats.canPerformAction('light_attack')) {
     stats.drainStamina('light_attack');
     return 'light_attack';
@@ -346,6 +350,93 @@ class LightAttackState implements AIState<PlayerContext> {
   }
 }
 
+// ── Parry State ─────────────────────────────────────────────────
+
+/** Parry active window where incoming attacks are deflected */
+const PARRY_WINDOW = 0.15;
+/** Recovery time after parry window */
+const PARRY_RECOVERY = 0.2;
+/** Total parry animation duration */
+const PARRY_TOTAL = PARRY_WINDOW + PARRY_RECOVERY;
+/** Stamina recovered on successful parry */
+const PARRY_STAMINA_RECOVERY = 10;
+/** Duration of parry damage buff (seconds) */
+const PARRY_BUFF_DURATION = 3.0;
+/** Damage multiplier during parry buff */
+const PARRY_BUFF_MULTIPLIER = 1.5;
+/** Duration of bright flash on successful parry */
+const PARRY_FLASH_DURATION = 0.2;
+/** Flash color (bright white) */
+const PARRY_FLASH_COLOR = new THREE.Color(2.0, 2.0, 2.5);
+
+class ParryState implements AIState<PlayerContext> {
+  readonly name = 'parry';
+
+  private timer = 0;
+  private _inWindow = false;
+  private _flashTimer = 0;
+  private _originalColor: THREE.Color | null = null;
+
+  /** True while in the 150ms active deflection window */
+  get isInWindow(): boolean { return this._inWindow; }
+
+  enter(ctx: PlayerContext): void {
+    this.timer = 0;
+    this._inWindow = true;
+    this._flashTimer = 0;
+    this._originalColor = null;
+
+    // Visual: compress on Z axis to indicate parry stance
+    ctx.model.mesh.scale.z = 0.8;
+  }
+
+  update(dt: number, ctx: PlayerContext): string | null {
+    this.timer += dt;
+    this._inWindow = this.timer < PARRY_WINDOW;
+
+    // Update parry flash visual
+    if (this._flashTimer > 0) {
+      this._flashTimer -= dt;
+      if (this._flashTimer <= 0) {
+        this.restoreColor(ctx);
+      }
+    }
+
+    if (this.timer >= PARRY_TOTAL) {
+      return 'idle';
+    }
+
+    return null;
+  }
+
+  exit(ctx: PlayerContext): void {
+    this._inWindow = false;
+    ctx.model.mesh.scale.z = 1.0;
+    this.restoreColor(ctx);
+  }
+
+  /** Called when a successful parry deflects an attack */
+  triggerSuccessFlash(ctx: PlayerContext): void {
+    const material = ctx.model.mesh.material as THREE.ShaderMaterial;
+    if (material.uniforms && material.uniforms['uBaseColor']) {
+      if (!this._originalColor) {
+        this._originalColor = (material.uniforms['uBaseColor'].value as THREE.Color).clone();
+      }
+      (material.uniforms['uBaseColor'].value as THREE.Color).copy(PARRY_FLASH_COLOR);
+      this._flashTimer = PARRY_FLASH_DURATION;
+    }
+  }
+
+  private restoreColor(ctx: PlayerContext): void {
+    if (!this._originalColor) return;
+    const material = ctx.model.mesh.material as THREE.ShaderMaterial;
+    if (material.uniforms && material.uniforms['uBaseColor']) {
+      (material.uniforms['uBaseColor'].value as THREE.Color).copy(this._originalColor);
+    }
+    this._originalColor = null;
+  }
+}
+
 // ── Timed stub state (placeholder for future implementation) ────
 
 class TimedStubState implements AIState<PlayerContext> {
@@ -390,8 +481,13 @@ class DeadState implements AIState<PlayerContext> {
 
 export class PlayerStateMachine {
   readonly fsm: StateMachine<PlayerContext>;
+  private readonly context: PlayerContext;
   private readonly dodgeState: DodgeState;
   private readonly lightAttackState: LightAttackState;
+  private readonly parryState: ParryState;
+
+  /** Time remaining on parry damage buff */
+  private _parryBuffTimer = 0;
 
   constructor(
     input: InputManager,
@@ -401,11 +497,12 @@ export class PlayerStateMachine {
     camera: CameraController,
     weaponSystem: WeaponSystem,
   ) {
-    const context: PlayerContext = { input, controller, stats, model, camera, weaponSystem };
-    this.fsm = new StateMachine<PlayerContext>(context);
+    this.context = { input, controller, stats, model, camera, weaponSystem };
+    this.fsm = new StateMachine<PlayerContext>(this.context);
 
     this.dodgeState = new DodgeState();
     this.lightAttackState = new LightAttackState();
+    this.parryState = new ParryState();
 
     // Register all player states
     this.fsm
@@ -413,6 +510,7 @@ export class PlayerStateMachine {
       .addState(new RunState())
       .addState(this.dodgeState)
       .addState(this.lightAttackState)
+      .addState(this.parryState)
       .addState(new TimedStubState('heavy_attack', 0.6))
       .addState(new TimedStubState('stagger', 0.5))
       .addState(new TimedStubState('heal', 0.8))
@@ -424,6 +522,11 @@ export class PlayerStateMachine {
 
   update(dt: number): void {
     this.fsm.update(dt);
+
+    // Tick down parry damage buff
+    if (this._parryBuffTimer > 0) {
+      this._parryBuffTimer = Math.max(0, this._parryBuffTimer - dt);
+    }
   }
 
   getCurrentState(): string | null {
@@ -433,5 +536,45 @@ export class PlayerStateMachine {
   /** True when the player is in the dodge i-frame window */
   get isInvulnerable(): boolean {
     return this.dodgeState.isInvulnerable;
+  }
+
+  /** True when the player is in the parry state's active deflection window (150ms) */
+  get isInParryWindow(): boolean {
+    return this.fsm.getCurrentStateName() === 'parry' && this.parryState.isInWindow;
+  }
+
+  /** True when the player is in the parry state but outside the active window */
+  get isInParryRecovery(): boolean {
+    return this.fsm.getCurrentStateName() === 'parry' && !this.parryState.isInWindow;
+  }
+
+  /** Damage multiplier: 1.5x while parry buff is active, 1.0x otherwise */
+  get damageMultiplier(): number {
+    return this._parryBuffTimer > 0 ? PARRY_BUFF_MULTIPLIER : 1.0;
+  }
+
+  /** True while the parry damage buff is active */
+  get hasParryBuff(): boolean {
+    return this._parryBuffTimer > 0;
+  }
+
+  /**
+   * Called by the CombatSystem when a successful parry deflects an attack.
+   * Grants stamina recovery and activates the damage buff.
+   */
+  notifyParrySuccess(): void {
+    this._parryBuffTimer = PARRY_BUFF_DURATION;
+    this.context.stats.addStamina(PARRY_STAMINA_RECOVERY);
+    this.parryState.triggerSuccessFlash(this.context);
+    console.log('[Parry] SUCCESS — 1.5x damage buff for 3s, +10 stamina');
+  }
+
+  /**
+   * Called by the CombatSystem when a hit lands during parry recovery (failed parry).
+   * Forces the player into stagger state as extra punishment.
+   */
+  notifyParryFail(): void {
+    this.fsm.setState('stagger');
+    console.log('[Parry] FAIL — extra stagger applied');
   }
 }

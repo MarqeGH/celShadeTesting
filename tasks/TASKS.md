@@ -1014,7 +1014,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-039: Parry System
+## [DONE] T-039: Parry System
 
 | Field | Value |
 |-------|-------|
@@ -1026,6 +1026,19 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Implement parry mechanic. On parry input: 150ms window where incoming attacks are deflected. Successful parry: attacker staggers 1s, player recovers 10 stamina, next player attack deals 1.5x damage (buff lasts 3s). Failed parry (hit outside window): player takes full damage + 200ms extra stagger. Consume 8 stamina on attempt. Visual: bright flash on successful parry. |
 | **Acceptance Criteria** | Parry window is 150ms. Successful parry staggers attacker and grants damage buff. Failed parry penalizes player. Stamina cost applies regardless. Visual feedback is clear. |
 | **Verification** | Time parry against Triangle Shard lunge. Verify successful parry staggers enemy. Miss timing, verify extra stagger. |
+
+**Implementation Notes:**
+- Created `ParryState` in `src/player/PlayerStateMachine.ts` — 150ms active deflection window + 200ms recovery (350ms total)
+- Parry input (Q key) added to `checkActionTransitions` with 8 stamina cost via `STAMINA_COSTS`
+- Successful parry: attacker force-staggered via `StaggerSystem.applyStaggerDamage(9999)`, player recovers 10 stamina, 1.5x damage buff activated for 3s
+- Failed parry (hit during recovery phase): full damage applied + forced stagger state as punishment
+- Visual: bright white flash (`uBaseColor` override for 200ms) on successful parry, Z-axis scale compression during parry stance
+- `ParryHandler` interface added to `CombatSystem` — `setParryHandler()` intercepts player-targeted hits before damage application
+- `PlayerStateMachine` exposes `isInParryWindow`, `isInParryRecovery`, `damageMultiplier`, `notifyParrySuccess()`, `notifyParryFail()`
+- Added `addStamina()` method and `parry: 8` cost to `PlayerStats`
+- Wired up in `Game.ts` after poise registration
+- TypeScript compiles clean, Vite build succeeds
+- **Files changed:** `src/player/PlayerStateMachine.ts` (modified), `src/combat/CombatSystem.ts` (modified), `src/player/PlayerStats.ts` (modified), `src/app/Game.ts` (modified)
 
 ---
 
