@@ -1068,7 +1068,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-041: Healing Implementation
+## [DONE] T-041: Healing Implementation
 
 | Field | Value |
 |-------|-------|
@@ -1080,6 +1080,16 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Implement heal action. On heal input (if charges > 0): enter heal state. 800ms animation. Heal 35 HP at animation end. If damaged during animation, heal is cancelled (charge NOT consumed). Consume charge only on successful heal. Visual: brief green glow on player. Cannot heal at full HP. |
 | **Acceptance Criteria** | Healing restores 35 HP after 800ms. Interrupting heal preserves charge. Charges decrease on success. Cannot heal at full HP. Visual feedback. |
 | **Verification** | Take damage, heal, verify HP restored and charge consumed. Start heal, take hit, verify charge NOT consumed. |
+
+**Implementation Notes:**
+- Created `HealState` class in `PlayerStateMachine.ts` — replaces `TimedStubState('heal', 0.8)` with full heal logic
+- 800ms duration: at completion, calls `stats.heal()` which consumes a charge and restores 35 HP
+- If interrupted (e.g. taking damage → stagger), `exit()` runs but `heal()` is never called — charge preserved automatically
+- Visual: green glow via `uBaseColor` uniform override (`THREE.Color(0.3, 1.5, 0.4)`) during heal animation, restored on exit
+- Removed premature `stats.heal()` call from `checkActionTransitions` — HealState now owns the full heal lifecycle
+- Updated `HEAL_AMOUNT` from 40 to 35 per task spec
+- `canHeal()` already blocks healing at full HP (charges > 0 AND hp < maxHp)
+- **Files changed:** `src/player/PlayerStateMachine.ts` (modified), `src/player/PlayerStats.ts` (modified)
 
 ---
 
