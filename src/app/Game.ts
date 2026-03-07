@@ -20,6 +20,7 @@ import '../enemies/TriangleShard'; // side-effect: registers in EnemyRegistry
 import { CubeSentinel } from '../enemies/CubeSentinel'; // side-effect: registers in EnemyRegistry
 import { HUD } from '../ui/HUD';
 import { UIManager } from '../ui/UIManager';
+import { DebugOverlay } from '../utils/debug';
 
 export class Game {
   readonly scene: THREE.Scene;
@@ -43,6 +44,7 @@ export class Game {
   private playerStateMachine: PlayerStateMachine;
   private hud: HUD;
   private uiManager: UIManager;
+  private debugOverlay: DebugOverlay;
   private enemies: BaseEnemy[] = [];
 
   constructor(container: HTMLElement) {
@@ -85,6 +87,8 @@ export class Game {
     this.combatSystem = new CombatSystem(this.hitboxManager, this.eventBus);
 
     // Register player as a damageable combat entity
+    // Debug overlay reference captured via closure after construction below
+    const debugRef = { overlay: null as DebugOverlay | null };
     const playerStats = this.playerStats;
     const playerMesh = this.playerModel.mesh;
     const playerEntity: CombatEntity = {
@@ -93,7 +97,10 @@ export class Game {
       stringId: 'player',
       getHp: () => playerStats.hp,
       getMaxHp: () => playerStats.maxHp,
-      takeDamage: (amount) => playerStats.takeDamage(amount),
+      takeDamage: (amount) => {
+        if (debugRef.overlay?.godMode) return playerStats.hp; // god mode: no damage
+        return playerStats.takeDamage(amount);
+      },
       isDead: () => playerStats.isDead,
       getPosition: () => playerMesh.position,
     };
@@ -103,6 +110,28 @@ export class Game {
     this.hud = new HUD(this.playerStats, this.eventBus);
     this.hud.attach(container);
     this.uiManager = new UIManager(this.hud);
+
+    // Debug overlay
+    this.debugOverlay = new DebugOverlay({
+      renderer: this.renderer.renderer,
+      scene: this.scene,
+      playerStateMachine: this.playerStateMachine,
+      playerModel: this.playerModel,
+      playerStats: this.playerStats,
+      enemies: this.enemies,
+      hitboxManager: this.hitboxManager,
+    });
+    this.debugOverlay.attach(container);
+    debugRef.overlay = this.debugOverlay;
+
+    // Debug: instant kill — when any enemy takes damage, kill it immediately
+    this.eventBus.on('ENEMY_DAMAGED', (data) => {
+      if (!this.debugOverlay.instantKill) return;
+      const enemy = this.enemies.find((e) => e.stringId === data.enemyId);
+      if (enemy && !enemy.isDead()) {
+        enemy.takeDamage(enemy.getHp());
+      }
+    });
 
     // Spawn test enemies
     this.spawnEnemies();
@@ -194,6 +223,7 @@ export class Game {
     this.playerStats.update(dt);
     this.uiManager.update();
     this.playerModel.update(dt);
+    this.debugOverlay.update(dt);
 
     // Update camera orbit and follow
     this.cameraController.update(dt, this.playerModel.mesh.position);
@@ -238,6 +268,7 @@ export class Game {
     }
     this.enemies.length = 0;
     this.uiManager.dispose();
+    this.debugOverlay.dispose();
     this.hitboxManager.clear();
     this.eventBus.clear();
     window.removeEventListener('keydown', this.onToggleOutline);

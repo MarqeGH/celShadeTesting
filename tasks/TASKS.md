@@ -666,7 +666,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-026: Debug Overlay
+## [DONE] T-026: Debug Overlay
 
 | Field | Value |
 |-------|-------|
@@ -678,6 +678,16 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Create debug overlay toggled by F1. Display: FPS counter, player state name, player position, active enemy count, draw call count (renderer.info.render.calls). Add hitbox/hurtbox wireframe visualization (colored wireframe boxes/spheres shown when debug is active). God mode toggle (F2): invincibility. Instant kill toggle (F3): one-shot enemies. |
 | **Acceptance Criteria** | F1 toggles debug overlay. FPS is accurate. Player state and position update in real-time. Hitbox wireframes visible during attacks. God mode and instant kill toggles work. |
 | **Verification** | Toggle F1, verify info displays. Attack, verify hitbox wireframes appear during active window. Toggle god mode, verify no damage taken. |
+
+**Implementation Notes:**
+- Created `src/utils/debug.ts` — `DebugOverlay` class with HTML/CSS overlay panel toggled by F1
+- Displays: FPS (sampled every 0.5s), player state name, player position, alive enemy count, draw call count from `renderer.info.render.calls`
+- Hitbox/hurtbox wireframe visualization: red `EdgesGeometry` wireframes for active hitboxes, green for hurtboxes; rendered with `depthTest: false` and high `renderOrder` so always visible
+- Added `getActiveHitboxes()` and `getAllHurtboxes()` read-only accessors to `HitboxManager` for debug visualization
+- God mode (F2): blocks all player damage via closure-wrapped `takeDamage` on the player combat entity
+- Instant kill (F3): listens to `ENEMY_DAMAGED` event and applies lethal damage to the hit enemy
+- Integrated into `Game.ts`: constructed with references to all needed systems, updated each frame, disposed on cleanup
+- **Files changed:** `src/utils/debug.ts` (new), `src/app/Game.ts` (modified), `src/combat/HitboxManager.ts` (added accessors)
 
 ---
 

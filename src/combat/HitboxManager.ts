@@ -159,6 +159,18 @@ export class HitboxManager {
     return this.hurtboxes.get(entityId);
   }
 
+  // ── Read-only accessors (debug visualization) ────────────────
+
+  /** Returns all currently active hitboxes (read-only, for debug). */
+  getActiveHitboxes(): readonly Hitbox[] {
+    return this.hitboxes.filter((h) => h.active);
+  }
+
+  /** Returns all registered hurtboxes (read-only, for debug). */
+  getAllHurtboxes(): readonly Hurtbox[] {
+    return Array.from(this.hurtboxes.values());
+  }
+
   // ── Per-frame overlap detection ──────────────────────────────
 
   /**
