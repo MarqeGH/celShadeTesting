@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import { Renderer } from '../rendering/Renderer';
 import { GameLoop } from './GameLoop';
-import { InputManager, GameAction } from './InputManager';
+import { InputManager } from './InputManager';
 import { PlayerModel } from '../player/PlayerModel';
 import { PlayerController } from '../player/PlayerController';
+import { PlayerStateMachine } from '../player/PlayerStateMachine';
 import { CameraController } from '../camera/CameraController';
 
 export class Game {
@@ -18,6 +19,7 @@ export class Game {
   private testCube: THREE.Mesh | null = null;
   private playerModel: PlayerModel;
   private playerController: PlayerController;
+  private playerStateMachine: PlayerStateMachine;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -37,6 +39,9 @@ export class Game {
     this.scene.add(this.playerModel.mesh);
 
     this.playerController = new PlayerController(this.input, this.cameraController, this.playerModel);
+    this.playerStateMachine = new PlayerStateMachine(
+      this.input, this.playerController, this.playerModel, this.cameraController,
+    );
 
     window.addEventListener('resize', this.onResize);
 
@@ -54,28 +59,10 @@ export class Game {
     this.scene.add(this.testCube);
   }
 
-  // Actions to log when justPressed
-  private static readonly LOG_ACTIONS: GameAction[] = [
-    'dodge', 'lightAttack', 'heavyAttack', 'parry', 'heal',
-    'lockOn', 'swapWeapon', 'pause',
-  ];
-
   private update(dt: number): void {
     this.input.update();
 
-    // Log justPressed actions (temporary test)
-    for (const action of Game.LOG_ACTIONS) {
-      if (this.input.justPressed(action)) {
-        console.log(`[Input] justPressed: ${action}`);
-      }
-    }
-
-    // Log held movement/sprint
-    if (this.input.isPressed('sprint')) {
-      console.log('[Input] held: sprint');
-    }
-
-    this.playerController.update(dt);
+    this.playerStateMachine.update(dt);
     this.playerModel.update(dt);
 
     // Update camera orbit and follow

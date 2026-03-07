@@ -224,7 +224,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-009: Player State Machine
+## [DONE] T-009: Player State Machine
 
 | Field | Value |
 |-------|-------|
@@ -236,6 +236,13 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Implement generic StateMachine class with states that have `enter()`, `update(dt)`, `exit()` methods. Create PlayerStateMachine with states: `idle`, `run`, `dodge`, `light_attack`, `heavy_attack`, `stagger`, `heal`, `dead`. Implement transition logic per ARCHITECTURE.md state transition rules. Only `idle` and `run` need full behavior for this task — others can be stubs that return to idle after a timer. |
 | **Acceptance Criteria** | Player transitions between idle and run based on input. State machine logs transitions to console. Stub states (dodge, attack, etc.) activate and return to idle after set duration. No state can be entered while already in it (no re-entry). |
 | **Verification** | Console log state transitions. Press dodge key → see "dodge" state → returns to idle after 300ms. |
+
+**Implementation Notes:**
+- Created `src/ai/AIState.ts` — generic `AIState<TContext>` interface with `name`, `enter()`, `update(dt)` → `string | null`, `exit()` lifecycle methods
+- Created `src/ai/StateMachine.ts` — generic `StateMachine<TContext>` class. States registered by name, `update()` delegates to current state, state returns next state name (or null to stay). No re-entry guard. Logs all transitions to console.
+- Created `src/player/PlayerStateMachine.ts` — `PlayerContext` bundles input/controller/model/camera. `IdleState` checks movement→run and action inputs→dodge/attack/heal. `RunState` delegates movement to `PlayerController.update(dt)` and checks for idle/action transitions. Stub states (`dodge` 300ms, `light_attack` 450ms, `heavy_attack` 600ms, `stagger` 500ms, `heal` 800ms) use `TimedStubState` that returns to idle after duration. `DeadState` is terminal.
+- Updated `src/app/Game.ts` — replaced direct `playerController.update(dt)` with `playerStateMachine.update(dt)`. Removed temporary input logging. Movement is now gated by FSM state (only active in `run` state).
+- **Files changed:** `src/ai/AIState.ts` (new), `src/ai/StateMachine.ts` (new), `src/player/PlayerStateMachine.ts` (new), `src/app/Game.ts` (modified)
 
 ---
 

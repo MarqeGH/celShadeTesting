@@ -5,7 +5,8 @@
       "Bash(npm install)",
       "Bash(npx tsc --noEmit)",
       "Bash(npx vite build)",
-      "Bash(timeout 5 npx vite --host)"
+      "Bash(timeout 5 npx vite --host)",
+      "mcp__Claude_Preview__preview_start"
     ]
   }
 }
