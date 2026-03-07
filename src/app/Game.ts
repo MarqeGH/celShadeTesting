@@ -21,6 +21,7 @@ import { EncounterManager, EncounterData } from '../world/EncounterManager';
 import { HUD } from '../ui/HUD';
 import { UIManager } from '../ui/UIManager';
 import { DebugOverlay } from '../utils/debug';
+import { DamageNumbers } from '../ui/DamageNumbers';
 import { DoorSystem } from '../world/DoorSystem';
 import { RoomAssembler } from '../world/RoomAssembler';
 import { RoomModule, type RoomModuleData, type ExitDoor } from '../world/RoomModule';
@@ -49,6 +50,7 @@ export class Game {
   private playerStateMachine: PlayerStateMachine;
   private hud: HUD;
   private uiManager: UIManager;
+  private damageNumbers: DamageNumbers;
   private debugOverlay: DebugOverlay;
   private encounterManager: EncounterManager;
   private doorSystem: DoorSystem;
@@ -126,6 +128,12 @@ export class Game {
     // Encounter manager
     this.encounterManager = new EncounterManager(
       this.eventBus, this.hitboxManager, this.combatSystem, this.staggerSystem, this.scene,
+    );
+
+    // Damage numbers
+    this.damageNumbers = new DamageNumbers(
+      container, this.camera, this.eventBus,
+      () => this.playerModel.mesh.position,
     );
 
     // HUD and UI
@@ -350,6 +358,7 @@ export class Game {
     if (this.currentRoom) {
       this.currentRoom.dispose();
     }
+    this.damageNumbers.dispose();
     this.uiManager.dispose();
     this.debugOverlay.dispose();
     this.hitboxManager.clear();

@@ -821,7 +821,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-032: Damage Numbers UI
+## [DONE] T-032: Damage Numbers UI
 
 | Field | Value |
 |-------|-------|
@@ -833,6 +833,19 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | On ENEMY_DAMAGED event, display floating damage number at enemy world position projected to screen. Number rises and fades over 800ms. Use CSS animations for float + fade. Color: white for normal, yellow for critical, red for player damage. Pool DOM elements to avoid allocation per hit. |
 | **Acceptance Criteria** | Hitting an enemy shows a floating number. Number matches actual damage dealt. Animation is smooth (rise + fade). Numbers are pooled (no new DOM elements created mid-combat). |
 | **Verification** | Hit enemy, verify number appears at correct position with correct value. Hit rapidly, verify no performance degradation. |
+
+**Implementation Notes:**
+- Created `src/ui/DamageNumbers.ts` — subscribes to `ENEMY_DAMAGED` and `PLAYER_DAMAGED` events, projects world position to screen coordinates using `Vector3.project(camera)`
+- DOM element pool of 20 `<div>` elements pre-warmed at construction — no allocation during combat. Oldest recycled when all active
+- CSS `@keyframes dmg-float` animation: 800ms rise (60px upward) + fade out. `will-change: transform, opacity` for GPU compositing
+- Color coding: white (`#ffffff`) for enemy damage, red (`#ff4444`) for player damage
+- Small random horizontal offset on spawn to prevent stacking when multiple hits land simultaneously
+- Behind-camera check (`projVec.z > 1`) prevents numbers from appearing when the hit is behind the viewer
+- Added `position` field to `ENEMY_DAMAGED` event payload in `EventBus.ts` for world-position data
+- Updated `CombatSystem.ts` to include defender position in `ENEMY_DAMAGED` emit
+- Integrated into `Game.ts`: constructed after EventBus/CombatSystem, disposed on cleanup
+- TypeScript compiles clean, Vite build succeeds
+- **Files changed:** `src/ui/DamageNumbers.ts` (new), `src/app/EventBus.ts` (modified), `src/combat/CombatSystem.ts` (modified), `src/app/Game.ts` (modified)
 
 ---
 

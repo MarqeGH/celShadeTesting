@@ -96,11 +96,13 @@ export class CombatSystem {
         this.eventBus.emit('PLAYER_DIED', {});
       }
     } else {
+      const defPos = defender.getPosition();
       this.eventBus.emit('ENEMY_DAMAGED', {
         enemyId: defender.stringId,
         amount: result.damage,
         currentHP: remainingHp,
         sourceId: String(hit.attackerId),
+        position: { x: defPos.x, y: defPos.y, z: defPos.z },
       });
 
       if (defender.isDead()) {
