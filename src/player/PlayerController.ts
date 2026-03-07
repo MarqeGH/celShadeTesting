@@ -3,6 +3,10 @@ import { InputManager } from '../app/InputManager';
 import { CameraController } from '../camera/CameraController';
 import { PlayerModel } from './PlayerModel';
 import { PlayerStats, SPRINT_STAMINA_PER_SEC } from './PlayerStats';
+import { SphereCollider, AABB, testSphereVsAABB, resolveCollision } from '../engine/CollisionSystem';
+
+/** Player collision sphere radius in meters */
+const PLAYER_RADIUS = 0.5;
 
 /**
  * Handles camera-relative player movement and mesh rotation.
@@ -25,6 +29,12 @@ export class PlayerController {
   private readonly moveDir = new THREE.Vector3();
   private readonly forward = new THREE.Vector3();
   private readonly right = new THREE.Vector3();
+
+  /** Sphere collider centered on the player, updated each collision check */
+  private readonly sphereCollider: SphereCollider = {
+    center: new THREE.Vector3(),
+    radius: PLAYER_RADIUS,
+  };
 
   constructor(
     input: InputManager,
@@ -97,5 +107,26 @@ export class PlayerController {
 
     const lerpFactor = 1 - Math.exp(-this.rotationSpeed * dt);
     mesh.rotation.y = currentAngle + angleDiff * lerpFactor;
+  }
+
+  /**
+   * Test player sphere against all wall AABBs and resolve overlaps.
+   * Call once per frame after all movement has been applied.
+   * Resolving each wall independently produces natural wall-sliding.
+   */
+  resolveWallCollisions(walls: AABB[]): void {
+    const pos = this.playerModel.mesh.position;
+
+    // Sync sphere collider center to current player position
+    this.sphereCollider.center.set(pos.x, pos.y, pos.z);
+
+    for (const wall of walls) {
+      const result = testSphereVsAABB(this.sphereCollider, wall);
+      if (result.hit) {
+        resolveCollision(pos, result);
+        // Re-sync collider for subsequent wall checks
+        this.sphereCollider.center.set(pos.x, pos.y, pos.z);
+      }
+    }
   }
 }

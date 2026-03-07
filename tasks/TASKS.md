@@ -371,7 +371,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-015: Player-Wall Collision
+## [DONE] T-015: Player-Wall Collision
 
 | Field | Value |
 |-------|-------|
@@ -383,6 +383,15 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Add collision between player and arena walls. Player has a sphere collider (radius 0.5m). Walls have AABB colliders. Each frame after movement, test player sphere vs wall AABBs and resolve overlaps. Player should slide along walls, not stop dead. |
 | **Acceptance Criteria** | Player cannot walk through walls. Player slides along walls when moving at an angle. No jittering at wall boundaries. |
 | **Verification** | Walk into walls from various angles. Confirm slide behavior and no pass-through. |
+
+**Implementation Notes:**
+- Added `SphereCollider` (radius 0.5m) to `PlayerController`, synced to player mesh position each frame
+- Added `resolveWallCollisions(walls: AABB[])` method — iterates all wall AABBs, tests sphere-vs-AABB via `CollisionSystem`, resolves overlaps. Re-syncs collider after each resolution for correct corner handling
+- Wall sliding works naturally: `resolveCollision` pushes only along the minimum overlap axis, preserving the parallel movement component
+- Collision check runs in `Game.update()` after `playerStateMachine.update(dt)` and before camera follow, so all movement sources are covered
+- No changes to `CollisionSystem.ts` — existing `testSphereVsAABB` and `resolveCollision` were sufficient
+- TypeScript compiles clean, Vite build succeeds, no console errors
+- **Files changed:** `src/player/PlayerController.ts` (modified), `src/app/Game.ts` (modified)
 
 ---
 

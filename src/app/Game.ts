@@ -91,6 +91,7 @@ export class Game {
     this.input.update();
 
     this.playerStateMachine.update(dt);
+    this.playerController.resolveWallCollisions(this.testArena.wallColliders);
     this.playerStats.update(dt);
     this.playerModel.update(dt);
 
