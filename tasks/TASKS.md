@@ -395,7 +395,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-016: Dodge Implementation
+## [DONE] T-016: Dodge Implementation
 
 | Field | Value |
 |-------|-------|
@@ -407,6 +407,19 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Implement the dodge state fully. On dodge input (if stamina ≥ 20): enter dodge state, move player 4m over 300ms in input direction (or backward if no direction). I-frames active from 50ms to 250ms. After dodge, 100ms recovery before next action. Consume 20 stamina on dodge start. Player mesh flashes translucent during i-frames. |
 | **Acceptance Criteria** | Dodge moves player 4m in input direction. Stamina is consumed. I-frame window exists (testable via flag). Visual feedback during dodge (translucency). Cannot dodge without sufficient stamina. |
 | **Verification** | Dodge in different directions, verify distance. Drain stamina, verify dodge is blocked. |
+
+**Implementation Notes:**
+- Replaced `TimedStubState('dodge', 0.3)` with full `DodgeState` in `src/player/PlayerStateMachine.ts`
+- Dodge direction: computed from WASD input in camera-relative space on enter. No directional input → dodge backward (opposite player facing direction)
+- Movement phase: 4m over 300ms (speed ≈ 13.33 m/s), translates mesh along computed direction
+- I-frames: active from 50ms to 250ms. `isInvulnerable` flag exposed via `PlayerStateMachine.isInvulnerable` getter for future combat system integration
+- Recovery phase: 100ms after movement ends (no actions allowed), then returns to idle. Total dodge duration: 400ms
+- Visual feedback: mesh becomes translucent (opacity 0.35) during i-frame window via `uOpacity` uniform on cel shader. Material restored on i-frame end and on state exit
+- Added `uOpacity` uniform to cel shader (`celFragment.ts`, `CelShadingPipeline.ts`) to support translucency — necessary cross-file change for visual feedback requirement
+- Stamina drain (20) handled by existing `checkActionTransitions()` before state entry
+- Pre-allocated `Vector3` scratch variables to avoid per-frame allocation
+- TypeScript compiles clean, Vite build succeeds, no console errors
+- **Files changed:** `src/player/PlayerStateMachine.ts` (modified), `src/shaders/celFragment.ts` (modified), `src/rendering/CelShadingPipeline.ts` (modified)
 
 ---
 

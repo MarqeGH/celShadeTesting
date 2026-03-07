@@ -2,6 +2,7 @@ export const celFragmentShader = /* glsl */ `
 uniform vec3 uBaseColor;
 uniform vec3 uLightDirection;
 uniform vec3 uAmbientColor;
+uniform float uOpacity;
 
 varying vec3 vNormal;
 varying vec3 vWorldPosition;
@@ -25,6 +26,6 @@ void main() {
   }
 
   vec3 color = uBaseColor * intensity + uAmbientColor;
-  gl_FragColor = vec4(color, 1.0);
+  gl_FragColor = vec4(color, uOpacity);
 }
 `;

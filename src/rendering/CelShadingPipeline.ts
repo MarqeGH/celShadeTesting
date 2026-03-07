@@ -19,6 +19,7 @@ export function createCelMaterial(
       uBaseColor: { value: baseColor.clone() },
       uLightDirection: { value: lightDirection.clone().normalize() },
       uAmbientColor: { value: DEFAULT_AMBIENT.clone() },
+      uOpacity: { value: 1.0 },
     },
     vertexShader: celVertexShader,
     fragmentShader: celFragmentShader,
