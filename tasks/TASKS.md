@@ -959,7 +959,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-037: Death Screen
+## [DONE] T-037: Death Screen
 
 | Field | Value |
 |-------|-------|
@@ -971,6 +971,18 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | On PLAYER_DIED event: show death screen overlay. Display: "Collapsed" text, rooms cleared, enemies killed, shards collected, shards kept (50%). "Return to Hub" button that triggers run end and reloads hub state. Fade in over 500ms. |
 | **Acceptance Criteria** | Death triggers death screen. Stats are accurate. Return button works. Visual is clean and themed (dark, minimal, geometric). |
 | **Verification** | Die in game, verify death screen shows with correct stats. Click return, verify run ends. |
+
+**Implementation Notes:**
+- Created `src/ui/MenuSystem.ts` — HTML/CSS death screen overlay with "Collapsed" title, run stats, and "Return to Hub" button
+- Subscribes to `PLAYER_DIED` event via EventBus. Shows overlay with 500ms CSS fade-in transition
+- Displays run stats from `RunState.endRun(false)`: rooms cleared, enemies killed, shards collected, shards kept (50% floor)
+- "Shards Kept" row highlighted in gold (#e0d060) to distinguish reward
+- Dark minimal theme: semi-transparent black background, thin-weight title in red with glow, clean stat rows
+- "Return to Hub" button: resets player (HP, position, state), clears encounter, restores HUD, starts fresh run with new enemies
+- Integrated `RunState` into `Game.ts` — instantiated and started on game boot, wired to auto-track kills/rooms/shards
+- `UIManager.setState('menu')` hides HUD on death; restored to `'gameplay'` on return
+- TypeScript compiles clean, Vite build succeeds, no console errors
+- **Files changed:** `src/ui/MenuSystem.ts` (new), `src/app/Game.ts` (modified)
 
 ---
 

@@ -29,6 +29,8 @@ import { RoomAssembler } from '../world/RoomAssembler';
 import { RoomModule, type RoomModuleData, type ExitDoor } from '../world/RoomModule';
 import { AssetLoader } from '../engine/AssetLoader';
 import { PickupSystem } from '../interactions/PickupSystem';
+import { MenuSystem } from '../ui/MenuSystem';
+import { RunState } from '../progression/RunState';
 
 export class Game {
   readonly scene: THREE.Scene;
@@ -62,6 +64,8 @@ export class Game {
   private roomAssembler: RoomAssembler;
   private assetLoader: AssetLoader;
   private pickupSystem: PickupSystem;
+  private menuSystem: MenuSystem;
+  private runState: RunState;
   private currentRoom: RoomModule | null = null;
 
   constructor(container: HTMLElement) {
@@ -160,6 +164,23 @@ export class Game {
     this.hud = new HUD(this.playerStats, this.eventBus);
     this.hud.attach(container);
     this.uiManager = new UIManager(this.hud);
+
+    // Run state tracking
+    this.runState = new RunState(this.eventBus);
+    this.runState.startRun();
+
+    // Death screen
+    this.menuSystem = new MenuSystem(
+      container,
+      this.eventBus,
+      this.runState,
+      () => this.handleReturnToHub(),
+    );
+
+    // Hide HUD when player dies
+    this.eventBus.on('PLAYER_DIED', () => {
+      this.uiManager.setState('menu');
+    });
 
     // Debug overlay
     this.debugOverlay = new DebugOverlay({
@@ -365,6 +386,27 @@ export class Game {
     return entryPosition;
   }
 
+  /**
+   * Called when "Return to Hub" is clicked on death screen.
+   * Resets player, encounter, and restarts a fresh run.
+   */
+  private handleReturnToHub(): void {
+    // Reset player state
+    this.playerStats.reset();
+    this.playerStateMachine.fsm.setState('idle');
+    this.playerModel.mesh.position.set(0, 0, 0);
+
+    // Clear current encounter
+    this.encounterManager.dispose();
+
+    // Restore HUD
+    this.uiManager.setState('gameplay');
+
+    // Start a new run and respawn encounter
+    this.runState.startRun();
+    this.startTestEncounter();
+  }
+
   private onToggleOutline = (e: KeyboardEvent): void => {
     if (e.code === 'KeyO') {
       this.postProcessing.enabled = !this.postProcessing.enabled;
@@ -388,6 +430,8 @@ export class Game {
       this.currentRoom.dispose();
     }
     this.damageNumbers.dispose();
+    this.menuSystem.dispose();
+    this.runState.dispose();
     this.uiManager.dispose();
     this.debugOverlay.dispose();
     this.hitboxManager.clear();
