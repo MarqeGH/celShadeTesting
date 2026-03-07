@@ -4,7 +4,7 @@
 
 3D cel-shaded soulslike roguelike built with **Three.js + TypeScript + Vite**. Humans have collapsed into abstract geometric shapes. The player is an unstable form fighting through zones of collapsed humanity.
 
-**Current state**: Blueprint/planning phase complete. No source code yet — only documentation, data schemas, and task scaffolding exist. Implementation starts at task T-001 (project bootstrap).
+**Current state**: 41 of 46 tasks complete. The game is playable — player combat, two enemy types, wave-based encounters, zone progression, death/retry loop all functional. Remaining work: save system (T-042), object pool enhancement (T-043), math utilities (T-044), game config centralization (T-045), and one bug fix (T-BUG-001).
 
 ## Stack
 
@@ -19,13 +19,14 @@
 ## Project Layout
 
 ```
-docs/           — 12 design documents (architecture, enemies, combat, etc.)
-tasks/TASKS.md  — 45 implementation tasks with dependencies and acceptance criteria
-data/           — Runtime JSON: enemies/, weapons/, rooms/, encounters/, progression/
-src/            — Source code (empty folders scaffolded, no files yet)
-assets/         — Models, textures, audio, fonts, shaders (empty)
-tests/          — Test files (empty)
-public/         — HTML shell (not yet created)
+docs/                — 12 design documents (architecture, enemies, combat, etc.)
+tasks/TASKS.md       — 5 remaining tasks + 1 bug (see tasks/completed/ for done work)
+tasks/completed/     — Archived completed tasks grouped by system area (5 files)
+data/enemies/        — Enemy JSON data (triangle-shard.json, cube-sentinel.json)
+data/weapons/        — Weapon JSON (fracture-blade.json)
+data/rooms/          — Room module JSON (atrium-room-square.json)
+data/encounters/     — Encounter wave JSON (zone1-encounters.json)
+src/                 — 64 TypeScript source files (see subfolder table below)
 ```
 
 ### Key src/ Subfolders
@@ -35,18 +36,21 @@ public/         — HTML shell (not yet created)
 | `app/` | Game.ts (composition root), GameLoop.ts, EventBus.ts, InputManager.ts |
 | `engine/` | AssetLoader, CollisionSystem, Clock, ObjectPool |
 | `rendering/` | Renderer, CelShadingPipeline, PostProcessing, ParticleSystem |
-| `shaders/` | GLSL as TypeScript template literal strings |
+| `shaders/` | GLSL as TypeScript template literal strings (cel, outline) |
 | `player/` | PlayerController, PlayerStateMachine, PlayerStats, PlayerModel |
+| `player/states/` | One file per player state (Idle, Run, Dodge, LightAttack, HeavyAttack, Parry, Heal, Dead, TimedStub) + shared `PlayerContext` interface. Barrel-exported via `index.ts` |
 | `camera/` | CameraController, LockOnSystem, CameraShake |
 | `combat/` | CombatSystem, HitboxManager, DamageCalculator, WeaponSystem, StaggerSystem |
-| `enemies/` | BaseEnemy (abstract), EnemyFactory, EnemyRegistry, per-type files |
-| `ai/` | StateMachine (generic FSM), AIState, Perception, reusable states/ |
+| `enemies/` | BaseEnemy (abstract), EnemyFactory, EnemyRegistry, `shared.ts` (common utilities) |
+| `enemies/triangle-shard/` | TriangleShard.ts + states.ts (5 AI states) |
+| `enemies/cube-sentinel/` | CubeSentinel.ts + states.ts (6 AI states) |
+| `ai/` | StateMachine (generic FSM), AIState |
 | `world/` | RoomAssembler, RoomModule, ZoneGenerator, DoorSystem, EncounterManager |
+| `levels/` | Zone1Config, ZoneRegistry |
+| `interactions/` | PickupSystem, Interactable |
 | `ui/` | HUD, MenuSystem, DamageNumbers, UIManager — all HTML/CSS |
-| `progression/` | RunState, MetaProgression, UnlockRegistry |
-| `save/` | SaveManager (localStorage), SaveSchema |
-| `config/` | gameConfig.ts (all tuning values), renderConfig.ts |
-| `utils/` | math.ts, timer.ts, debug.ts, constants.ts |
+| `progression/` | RunState |
+| `utils/` | debug.ts |
 
 ## Architecture Rules
 
@@ -60,16 +64,17 @@ public/         — HTML shell (not yet created)
 ## Critical Conventions
 
 ### No Magic Numbers
-All tuning values (speeds, damages, stamina costs, timing windows) live in `src/config/gameConfig.ts`. Never hardcode gameplay numbers in logic files.
+All tuning values (speeds, damages, stamina costs, timing windows) should live in centralized config (T-045 pending). Currently many values are inline — consolidation is a remaining task.
 
 ### Data Schemas Are Canonical
 TypeScript interfaces in `docs/DATA_SCHEMAS.md` define the shape of all JSON files. Enemy JSON, weapon JSON, room JSON, encounter JSON must conform. Schemas include: `EnemyData`, `AttackData`, `RoomModuleData`, `EncounterData`, `WeaponData`, `PlayerStats`, `UnlockData`, `FSMStateConfig`.
 
 ### Enemy Implementation Pattern
 1. Create `data/enemies/{id}.json` conforming to `EnemyData` schema
-2. Create `src/enemies/{Name}.ts` extending `BaseEnemy`
-3. Override `createMesh()` and `initFSM()`
+2. Create `src/enemies/{id}/` subfolder with `{Name}.ts` extending `BaseEnemy` and `states.ts` for AI states
+3. Override `createMesh()` and `initFSM()`. Use utilities from `src/enemies/shared.ts` (`distToPlayer`, `pickAttack`)
 4. Register in `EnemyRegistry` — factory handles the rest
+5. Add side-effect import in `Game.ts`: `import '../enemies/{id}/{Name}';`
 
 ### Player State Machine States
 `idle`, `run`, `dodge`, `light_attack`, `heavy_attack`, `stagger`, `parry`, `heal`, `dead`. Use a state registry pattern so new states can be added without modifying the FSM core.
@@ -87,15 +92,17 @@ Custom `ShaderMaterial` with 4-step toon ramp. Material factory: `createCelMater
 
 ## Task System
 
-`tasks/TASKS.md` has 45 tasks (T-001 through T-045) organized in 5 phases:
+41 of 46 tasks complete. `tasks/TASKS.md` contains only remaining work. Completed tasks are archived in `tasks/completed/`:
 
-1. **Foundation** (T-001–T-015): Bootstrap, scene, player movement, camera, collision
-2. **Combat Core** (T-009–T-031): FSM, stamina, attacks, hitboxes, damage, stagger
-3. **Enemies** (T-020–T-035): BaseEnemy, factory, Triangle Shard, HUD, lock-on, pickups
-4. **World** (T-027–T-030): Room assembly, encounters, doors, zone generation
-5. **Polish** (T-012, T-023, T-032–T-042): Second enemy, full combat kit, particles, save, UI
+| Archive | Tasks |
+|---------|-------|
+| `completed/core-infrastructure.md` | T-001, T-003, T-004, T-005, T-014, T-024 |
+| `completed/player-combat.md` | T-002, T-006–T-010, T-015–T-019, T-031, T-039–T-041 |
+| `completed/enemies.md` | T-020–T-023 |
+| `completed/world-progression.md` | T-013, T-027–T-030, T-035–T-037 |
+| `completed/rendering-ui-polish.md` | T-011, T-012, T-025, T-026, T-032–T-034, T-038 |
 
-**First playable slice**: 3 Triangle Shards in a 20x20m arena. Fight, die, retry. No rooms/progression. See `docs/FIRST_IMPLEMENTATION_SLICE.md`.
+**Remaining**: T-042 (save system), T-043 (object pool enhancement), T-044 (math utilities), T-045 (game config centralization), T-BUG-001 (enemy wall collision).
 
 ### Work Types
 
@@ -152,7 +159,8 @@ All files in `data/`, `src/enemies/` (except BaseEnemy), `src/ui/`, `src/shaders
 | Zone themes, hazards, room modules | `docs/ENVIRONMENT_BIBLE.md` |
 | Player kit, stamina, combat pacing | `docs/PLAYER_AND_COMBAT_SPEC.md` |
 | JSON data shapes and examples | `docs/DATA_SCHEMAS.md` |
-| Full task list with dependencies | `tasks/TASKS.md` |
+| Remaining tasks and open bugs | `tasks/TASKS.md` |
+| What was already built (by area) | `tasks/completed/*.md` |
 | Implementation order and phasing | `docs/AGENT_EXECUTION_PLAN.md` |
 | Minimum playable vertical slice | `docs/FIRST_IMPLEMENTATION_SLICE.md` |
 | File/folder layout | `docs/PROJECT_STRUCTURE.md` |

@@ -12,7 +12,8 @@
       "Bash(wc -l /c/Users/tormo/Documents/VibeGames/Celtest/data/enemies/*.json)",
       "Bash(wc -l /c/Users/tormo/Documents/VibeGames/Celtest/docs/*.md)",
       "Bash(git mv src/enemies/CubeSentinel.ts src/enemies/cube-sentinel/CubeSentinel.ts)",
-      "Bash(git mv src/enemies/TriangleShard.ts src/enemies/triangle-shard/TriangleShard.ts)"
+      "Bash(git mv src/enemies/TriangleShard.ts src/enemies/triangle-shard/TriangleShard.ts)",
+      "Bash(find \"C:\\\\Users\\\\tormo\\\\Documents\\\\VibeGames\\\\Celtest\" -maxdepth 1 -type f -exec basename {} ;)"
     ]
   }
 }
