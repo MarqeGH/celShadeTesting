@@ -350,6 +350,222 @@ class LightAttackState implements AIState<PlayerContext> {
   }
 }
 
+// ── Heavy Attack State ──────────────────────────────────────────
+
+/** Charge timing */
+const HEAVY_CHARGE_MIN = 0.3;
+const HEAVY_CHARGE_MAX = 0.8;
+
+/** Attack phase timing (post-charge) */
+const HEAVY_TELEGRAPH = 0.25;
+const HEAVY_ACTIVE = 0.2;
+const HEAVY_RECOVERY = 0.3;
+
+/** Hitbox params (same arc as light, +50% stagger via damage) */
+const HEAVY_HITBOX_RADIUS = 2.5;
+const HEAVY_HITBOX_ARC_DEG = 120;
+
+/** Damage multiplier range (scales with charge time) */
+const HEAVY_DAMAGE_MULT_MIN = 1.5;
+const HEAVY_DAMAGE_MULT_MAX = 2.0;
+
+/** Movement speed while charging (m/s) */
+const HEAVY_CHARGE_MOVE_SPEED = 2.0;
+
+/** Scale deformation during heavy swing */
+const HEAVY_SCALE_X = 1.5;
+const HEAVY_SCALE_RETURN_SPEED = 6;
+
+/** Y-axis compression while charging (visual feedback) */
+const HEAVY_CHARGE_SCALE_Y = 0.85;
+
+type HeavyPhase = 'charging' | 'telegraph' | 'active' | 'recovery';
+
+class HeavyAttackState implements AIState<PlayerContext> {
+  readonly name = 'heavy_attack';
+
+  private phase: HeavyPhase = 'charging';
+  private chargeTimer = 0;
+  private phaseTimer = 0;
+  private damageMultiplier = HEAVY_DAMAGE_MULT_MIN;
+  private hitbox: ActiveHitbox | null = null;
+  private readonly _attackDir = new THREE.Vector3();
+  private readonly _forward = new THREE.Vector3();
+  private readonly _right = new THREE.Vector3();
+  private readonly _moveDir = new THREE.Vector3();
+
+  enter(ctx: PlayerContext): void {
+    this.phase = 'charging';
+    this.chargeTimer = 0;
+    this.phaseTimer = 0;
+    this.damageMultiplier = HEAVY_DAMAGE_MULT_MIN;
+    this.hitbox = null;
+
+    // Visual: compress Y while charging
+    ctx.model.mesh.scale.y = HEAVY_CHARGE_SCALE_Y;
+  }
+
+  update(dt: number, ctx: PlayerContext): string | null {
+    switch (this.phase) {
+      case 'charging':
+        return this.updateCharge(dt, ctx);
+      case 'telegraph':
+        return this.updateTelegraph(dt, ctx);
+      case 'active':
+        return this.updateActive(dt, ctx);
+      case 'recovery':
+        return this.updateRecovery(dt, ctx);
+    }
+  }
+
+  exit(ctx: PlayerContext): void {
+    if (this.hitbox) {
+      ctx.weaponSystem.removeHitbox(this.hitbox);
+      this.hitbox = null;
+    }
+    ctx.model.mesh.scale.x = 1.0;
+    ctx.model.mesh.scale.y = 1.0;
+  }
+
+  // ── Charge phase ──────────────────────────────────────────
+
+  private updateCharge(dt: number, ctx: PlayerContext): string | null {
+    this.chargeTimer += dt;
+
+    // Allow slow movement while charging
+    this.applyChargeMovement(dt, ctx);
+
+    // Auto-release at max charge
+    if (this.chargeTimer >= HEAVY_CHARGE_MAX) {
+      this.releaseCharge(ctx);
+      return null;
+    }
+
+    // Check if button released
+    if (!ctx.input.isPressed('heavyAttack')) {
+      // If released before minimum charge, cancel and go idle
+      if (this.chargeTimer < HEAVY_CHARGE_MIN) {
+        // Refund stamina since attack didn't fire
+        ctx.stats.addStamina(25);
+        return 'idle';
+      }
+      this.releaseCharge(ctx);
+      return null;
+    }
+
+    return null;
+  }
+
+  private applyChargeMovement(dt: number, ctx: PlayerContext): void {
+    const input = ctx.input;
+    let inputX = 0;
+    let inputZ = 0;
+
+    if (input.isPressed('moveForward')) inputZ += 1;
+    if (input.isPressed('moveBack'))    inputZ -= 1;
+    if (input.isPressed('moveLeft'))    inputX -= 1;
+    if (input.isPressed('moveRight'))   inputX += 1;
+
+    if (inputX === 0 && inputZ === 0) return;
+
+    ctx.camera.getForward(this._forward);
+    ctx.camera.getRight(this._right);
+
+    this._moveDir
+      .set(0, 0, 0)
+      .addScaledVector(this._forward, inputZ)
+      .addScaledVector(this._right, inputX);
+    this._moveDir.y = 0;
+    this._moveDir.normalize();
+
+    ctx.model.mesh.position.addScaledVector(this._moveDir, HEAVY_CHARGE_MOVE_SPEED * dt);
+  }
+
+  private releaseCharge(ctx: PlayerContext): void {
+    // Compute damage multiplier from charge time
+    const chargeT = Math.min(
+      1,
+      (this.chargeTimer - HEAVY_CHARGE_MIN) / (HEAVY_CHARGE_MAX - HEAVY_CHARGE_MIN),
+    );
+    this.damageMultiplier = HEAVY_DAMAGE_MULT_MIN + chargeT * (HEAVY_DAMAGE_MULT_MAX - HEAVY_DAMAGE_MULT_MIN);
+
+    // Compute attack direction from player facing
+    const meshY = ctx.model.mesh.rotation.y;
+    this._attackDir.set(Math.sin(meshY), 0, Math.cos(meshY));
+
+    // Restore Y scale, begin telegraph
+    ctx.model.mesh.scale.y = 1.0;
+    this.phase = 'telegraph';
+    this.phaseTimer = 0;
+  }
+
+  // ── Telegraph phase ───────────────────────────────────────
+
+  private updateTelegraph(dt: number, ctx: PlayerContext): string | null {
+    this.phaseTimer += dt;
+
+    // Scale up X-axis during telegraph
+    const t = this.phaseTimer / HEAVY_TELEGRAPH;
+    ctx.model.mesh.scale.x = 1.0 + (HEAVY_SCALE_X - 1.0) * t;
+
+    if (this.phaseTimer >= HEAVY_TELEGRAPH) {
+      this.phase = 'active';
+      this.phaseTimer = 0;
+    }
+    return null;
+  }
+
+  // ── Active phase ──────────────────────────────────────────
+
+  private updateActive(dt: number, ctx: PlayerContext): string | null {
+    this.phaseTimer += dt;
+
+    // Create hitbox on first active frame
+    if (!this.hitbox) {
+      this.hitbox = ctx.weaponSystem.createHitbox(
+        ctx.model.mesh.position,
+        this._attackDir,
+        HEAVY_HITBOX_RADIUS,
+        HEAVY_HITBOX_ARC_DEG,
+      );
+      ctx.model.mesh.scale.x = HEAVY_SCALE_X;
+    }
+
+    // Update hitbox to follow player
+    ctx.weaponSystem.updateHitbox(this.hitbox, ctx.model.mesh.position, this._attackDir);
+
+    if (this.phaseTimer >= HEAVY_ACTIVE) {
+      // Remove hitbox, enter recovery
+      ctx.weaponSystem.removeHitbox(this.hitbox);
+      this.hitbox = null;
+      this.phase = 'recovery';
+      this.phaseTimer = 0;
+    }
+    return null;
+  }
+
+  // ── Recovery phase ────────────────────────────────────────
+
+  private updateRecovery(dt: number, ctx: PlayerContext): string | null {
+    this.phaseTimer += dt;
+
+    // Smoothly return scale to normal
+    const mesh = ctx.model.mesh;
+    mesh.scale.x += (1.0 - mesh.scale.x) * Math.min(1, HEAVY_SCALE_RETURN_SPEED * dt);
+
+    if (this.phaseTimer >= HEAVY_RECOVERY) {
+      mesh.scale.x = 1.0;
+      return 'idle';
+    }
+    return null;
+  }
+
+  /** Current damage multiplier (used by external systems for damage scaling) */
+  getDamageMultiplier(): number {
+    return this.damageMultiplier;
+  }
+}
+
 // ── Parry State ─────────────────────────────────────────────────
 
 /** Parry active window where incoming attacks are deflected */
@@ -484,6 +700,7 @@ export class PlayerStateMachine {
   private readonly context: PlayerContext;
   private readonly dodgeState: DodgeState;
   private readonly lightAttackState: LightAttackState;
+  private readonly heavyAttackState: HeavyAttackState;
   private readonly parryState: ParryState;
 
   /** Time remaining on parry damage buff */
@@ -502,6 +719,7 @@ export class PlayerStateMachine {
 
     this.dodgeState = new DodgeState();
     this.lightAttackState = new LightAttackState();
+    this.heavyAttackState = new HeavyAttackState();
     this.parryState = new ParryState();
 
     // Register all player states
@@ -510,8 +728,8 @@ export class PlayerStateMachine {
       .addState(new RunState())
       .addState(this.dodgeState)
       .addState(this.lightAttackState)
+      .addState(this.heavyAttackState)
       .addState(this.parryState)
-      .addState(new TimedStubState('heavy_attack', 0.6))
       .addState(new TimedStubState('stagger', 0.5))
       .addState(new TimedStubState('heal', 0.8))
       .addState(new DeadState());
@@ -556,6 +774,11 @@ export class PlayerStateMachine {
   /** True while the parry damage buff is active */
   get hasParryBuff(): boolean {
     return this._parryBuffTimer > 0;
+  }
+
+  /** Heavy attack charge-based damage multiplier (1.5x–2.0x) */
+  get heavyAttackDamageMultiplier(): number {
+    return this.heavyAttackState.getDamageMultiplier();
   }
 
   /**

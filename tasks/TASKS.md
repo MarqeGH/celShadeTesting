@@ -1042,7 +1042,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-040: Heavy Attack
+## [DONE] T-040: Heavy Attack
 
 | Field | Value |
 |-------|-------|
@@ -1054,6 +1054,17 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Implement heavy attack. Hold attack button to charge (300ms minimum, 800ms max). Release to attack. Damage scales with charge time (1.5x at min charge, 2.0x at max charge). Longer telegraph and recovery than light attack. Hitbox: same as weapon but +50% stagger damage. 25 stamina cost. Player is slowed to 2 m/s while charging. |
 | **Acceptance Criteria** | Holding attack button begins charge state. Release fires heavy attack. Damage scales with charge time. Movement is slowed while charging. Hitbox and stagger damage are correct. |
 | **Verification** | Charge minimum, verify 1.5x damage. Charge maximum, verify 2.0x. Verify movement slow during charge. |
+
+**Implementation Notes:**
+- Created `HeavyAttackState` class in `src/player/PlayerStateMachine.ts` with 4-phase flow: charge → telegraph → active → recovery
+- Charge phase: 300ms minimum, 800ms max. Button held = charging; auto-releases at max. Released before min = cancel with stamina refund. Movement slowed to 2 m/s via manual WASD-to-camera-relative translation
+- Damage multiplier scales linearly from 1.5x (min charge) to 2.0x (max charge), exposed via `getDamageMultiplier()` and `heavyAttackDamageMultiplier` getter on PlayerStateMachine
+- Telegraph: 250ms, scales mesh X up to 1.5x. Active: 200ms, creates arc hitbox (2.5m radius, 120° arc) via WeaponSystem. Recovery: 300ms, smoothly returns scale
+- Visual feedback: Y-axis compression (0.85x) during charge, X-axis stretch (1.5x) during swing
+- Replaced `TimedStubState('heavy_attack', 0.6)` with full `HeavyAttackState`. Registered as field on `PlayerStateMachine` for external access
+- Stamina cost: 25 (already defined in `STAMINA_COSTS`). Input: right-click (`heavyAttack` already bound)
+- TypeScript compiles clean, Vite build succeeds, no console errors at runtime
+- **Files changed:** `src/player/PlayerStateMachine.ts` (modified)
 
 ---
 
