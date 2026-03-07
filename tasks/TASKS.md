@@ -322,7 +322,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-013: Ground Plane and Test Arena
+## [DONE] T-013: Ground Plane and Test Arena
 
 | Field | Value |
 |-------|-------|
@@ -334,6 +334,15 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Create a simple test arena: flat ground plane (20m x 20m), 4 walls (box geometry, 3m tall), grey floor with subtle grid pattern. This is the development test room — not a final game room. Apply cel-shading materials. Add a directional light and ambient light for the cel-shading to work with. |
 | **Acceptance Criteria** | A flat enclosed arena is visible. Player can move around in it. Walls are solid visual barriers. Cel-shading looks correct on floor and walls. |
 | **Verification** | Visual inspection. Walk around the arena. |
+
+**Implementation Notes:**
+- Created `src/world/RoomModule.ts` — `TestArena` class builds a 20x20m arena with `PlaneGeometry` floor and 4 `BoxGeometry` walls (3m tall, 0.4m thick)
+- All geometry uses `createCelMaterial()` — floor in dark grey (#3a3a3a), walls in slightly lighter blue-grey (#4a4a50). Cel-shading bands visible on all surfaces
+- Walls include pre-computed AABB colliders (`WallCollider` interface with min/max `Vector3`) exported for future T-015 collision use
+- Added `DirectionalLight` (position 5,10,3) and `AmbientLight` (0x404050, 0.4) to `Game.ts` for cel-shading to work with
+- Integrated into `Game.ts`: arena added to scene, disposed on cleanup
+- TypeScript compiles clean, Vite build succeeds, no console errors
+- **Files changed:** `src/world/RoomModule.ts` (new), `src/app/Game.ts` (modified)
 
 ---
 

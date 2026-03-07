@@ -9,6 +9,7 @@ import { PlayerStats } from '../player/PlayerStats';
 import { PlayerStateMachine } from '../player/PlayerStateMachine';
 import { CameraController } from '../camera/CameraController';
 import { createCelMaterial } from '../rendering/CelShadingPipeline';
+import { TestArena } from '../world/RoomModule';
 
 export class Game {
   readonly scene: THREE.Scene;
@@ -21,6 +22,7 @@ export class Game {
   private gameLoop: GameLoop;
   private postProcessing: PostProcessing;
   private testCube: THREE.Mesh | null = null;
+  private testArena: TestArena;
   private playerModel: PlayerModel;
   private playerController: PlayerController;
   private playerStats: PlayerStats;
@@ -37,6 +39,16 @@ export class Game {
     this.renderer = new Renderer(container);
     this.input = new InputManager();
     this.cameraController = new CameraController(this.camera, this.input);
+
+    // Lighting for cel-shading
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    dirLight.position.set(5, 10, 3);
+    this.scene.add(dirLight);
+    this.scene.add(new THREE.AmbientLight(0x404050, 0.4));
+
+    // Test arena
+    this.testArena = new TestArena();
+    this.scene.add(this.testArena.group);
 
     this.addTestCube();
 
@@ -118,6 +130,7 @@ export class Game {
     this.gameLoop.stop();
     this.input.dispose();
     this.playerModel.dispose();
+    this.testArena.dispose();
     this.postProcessing.dispose();
     window.removeEventListener('keydown', this.onToggleOutline);
     window.removeEventListener('resize', this.onResize);
