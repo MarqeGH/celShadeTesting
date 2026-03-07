@@ -19,6 +19,7 @@ export type GameAction =
   | 'heal'
   | 'lockOn'
   | 'swapWeapon'
+  | 'interact'
   | 'pause';
 
 // ── Key / button binding types ────────────────────────────────────
@@ -50,6 +51,7 @@ const DEFAULT_BINDINGS: Record<GameAction, Binding[]> = {
   heal:         [{ type: 'keyboard', code: 'KeyR' }],
   lockOn:       [{ type: 'keyboard', code: 'Tab' }, { type: 'mouse', button: 1 }],
   swapWeapon:   [{ type: 'keyboard', code: 'KeyF' }],
+  interact:     [{ type: 'keyboard', code: 'KeyE' }],
   pause:        [{ type: 'keyboard', code: 'Escape' }],
 };
 

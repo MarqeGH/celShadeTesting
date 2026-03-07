@@ -20,6 +20,10 @@ import { EncounterManager, EncounterData } from '../world/EncounterManager';
 import { HUD } from '../ui/HUD';
 import { UIManager } from '../ui/UIManager';
 import { DebugOverlay } from '../utils/debug';
+import { DoorSystem } from '../world/DoorSystem';
+import { RoomAssembler } from '../world/RoomAssembler';
+import { RoomModule, type RoomModuleData, type ExitDoor } from '../world/RoomModule';
+import { AssetLoader } from '../engine/AssetLoader';
 
 export class Game {
   readonly scene: THREE.Scene;
@@ -45,6 +49,10 @@ export class Game {
   private uiManager: UIManager;
   private debugOverlay: DebugOverlay;
   private encounterManager: EncounterManager;
+  private doorSystem: DoorSystem;
+  private roomAssembler: RoomAssembler;
+  private assetLoader: AssetLoader;
+  private currentRoom: RoomModule | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -138,6 +146,15 @@ export class Game {
       }
     });
 
+    // Door system and room assembler
+    this.assetLoader = new AssetLoader();
+    this.roomAssembler = new RoomAssembler();
+    this.doorSystem = new DoorSystem(this.eventBus, this.input, container);
+    this.doorSystem.setPlayerPosition(this.playerModel.mesh.position);
+    this.doorSystem.setTransitionCallback(async (exit) => {
+      return this.handleRoomTransition(exit);
+    });
+
     // Start test encounter via EncounterManager
     this.startTestEncounter();
 
@@ -205,13 +222,19 @@ export class Game {
     this.input.update();
 
     this.playerStateMachine.update(dt);
-    this.playerController.resolveWallCollisions(this.testArena.wallColliders);
+
+    // Resolve wall collisions against current room (assembled or test arena)
+    const walls = this.currentRoom
+      ? this.currentRoom.wallColliders
+      : this.testArena.wallColliders;
+    this.playerController.resolveWallCollisions(walls);
 
     // Update encounter (handles enemy updates + wave progression)
     const playerPos = this.playerModel.mesh.position;
     this.encounterManager.update(dt, playerPos);
 
     this.combatSystem.update();
+    this.doorSystem.update(dt);
     this.playerStats.update(dt);
     this.uiManager.update();
     this.playerModel.update(dt);
@@ -242,6 +265,61 @@ export class Game {
     this.postProcessing.resize(width, height);
   };
 
+  /**
+   * Handles room transition: unloads current room, loads next room, returns entry position.
+   * Used as a callback by DoorSystem during door transitions.
+   */
+  private async handleRoomTransition(exit: ExitDoor): Promise<THREE.Vector3> {
+    // Dispose current encounter
+    this.encounterManager.dispose();
+
+    // Unload current assembled room if one exists
+    if (this.currentRoom) {
+      this.scene.remove(this.currentRoom.group);
+      this.currentRoom.dispose();
+      this.currentRoom = null;
+    }
+
+    // Determine the next room to load.
+    // For now, always load the atrium-room-square as a demonstration.
+    // A full ZoneGenerator (T-030) will provide proper room sequencing.
+    const roomData = await this.assetLoader.loadJSON<RoomModuleData>('data/rooms/atrium-room-square.json');
+    const room = this.roomAssembler.assemble(roomData);
+    this.scene.add(room.group);
+    this.currentRoom = room;
+
+    // Register room with door system
+    this.doorSystem.setRoom(room);
+
+    // Start a new encounter for the new room
+    const encounter: EncounterData = {
+      id: `encounter-${roomData.id}`,
+      difficulty: 3,
+      waves: [
+        {
+          delay: 500,
+          spawns: [
+            { enemyId: 'triangle-shard', count: 2, spawnPoint: 'random' },
+            { enemyId: 'cube-sentinel', count: 1, spawnPoint: 'farthest' },
+          ],
+        },
+      ],
+    };
+
+    const entryPosition = room.getPlayerEntry();
+    const spawnPoints = room.getSpawnPoints();
+
+    await this.encounterManager.startEncounter(
+      encounter,
+      roomData.id,
+      spawnPoints,
+      entryPosition,
+    );
+
+    console.log(`[Game] Loaded room "${roomData.id}" via ${exit.direction} door`);
+    return entryPosition;
+  }
+
   private onToggleOutline = (e: KeyboardEvent): void => {
     if (e.code === 'KeyO') {
       this.postProcessing.enabled = !this.postProcessing.enabled;
@@ -256,6 +334,11 @@ export class Game {
     this.testArena.dispose();
     this.postProcessing.dispose();
     this.encounterManager.dispose();
+    this.doorSystem.dispose();
+    this.assetLoader.dispose();
+    if (this.currentRoom) {
+      this.currentRoom.dispose();
+    }
     this.uiManager.dispose();
     this.debugOverlay.dispose();
     this.hitboxManager.clear();

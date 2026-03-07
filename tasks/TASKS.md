@@ -744,7 +744,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-029: Door System
+## [DONE] T-029: Door System
 
 | Field | Value |
 |-------|-------|
@@ -756,6 +756,21 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Implement door transitions between rooms. Doors start locked (red). On ROOM_CLEARED, doors unlock (green). Player approaching unlocked door + interact input triggers room transition. Transition: fade to black (500ms), unload current room, load next room, place player at entry, fade in (500ms). |
 | **Acceptance Criteria** | Doors lock/unlock based on encounter state. Player can interact with unlocked doors. Room transition loads new room and repositions player. Fade transition is smooth. |
 | **Verification** | Clear room, approach door, interact, verify new room loads with player at entry position. |
+
+**Implementation Notes:**
+- Created `src/world/DoorSystem.ts` — manages door lock/unlock state and room-to-room transitions
+- Listens for `ROOM_CLEARED` event via EventBus → calls `currentRoom.unlockExits()` to change door color from red to green
+- Per-frame proximity check: finds nearest unlocked door within 2.5m of player on XZ plane
+- "Press E to enter" prompt appears when player is near an unlocked door (HTML overlay, fades in/out)
+- Added `interact` GameAction to `InputManager.ts` bound to `KeyE` — necessary cross-file change for door interaction
+- Transition sequence: fade out (500ms, opacity-driven black overlay) → invoke async `RoomTransitionCallback` → reposition player → fade in (500ms)
+- `RoomTransitionCallback` pattern: Game.ts provides `handleRoomTransition(exit)` which disposes current encounter, unloads current room, loads next room via `AssetLoader` + `RoomAssembler`, starts new encounter, returns entry position
+- State machine guards: `isTransitioning()` exposes busy state; during fade/loading no door interaction is possible
+- Error recovery: if transition callback fails, fades back in to preserve playability
+- Wall collision resolution updated in Game.ts to use current room's colliders (assembled or test arena)
+- Integrated `AssetLoader`, `RoomAssembler` into Game.ts for room loading pipeline
+- TypeScript compiles clean, Vite build succeeds
+- **Files changed:** `src/world/DoorSystem.ts` (new), `src/app/Game.ts` (modified), `src/app/InputManager.ts` (modified)
 
 ---
 
