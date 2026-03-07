@@ -534,7 +534,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-021: Enemy Factory and Registry
+## [DONE] T-021: Enemy Factory and Registry
 
 | Field | Value |
 |-------|-------|
@@ -546,6 +546,15 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | EnemyRegistry maps string type IDs to enemy class constructors. EnemyFactory takes an enemy type ID + spawn position, loads the corresponding JSON data from `data/enemies/`, creates an instance of the correct class, initializes it with data, and returns it. Support lazy loading of enemy data. |
 | **Acceptance Criteria** | `EnemyFactory.create("triangle-shard", position)` returns a fully initialized Triangle Shard enemy at the given position. Registry correctly resolves type IDs to classes. Missing type ID throws descriptive error. |
 | **Verification** | Call factory with known type ID, verify returned enemy has correct stats from JSON data. |
+
+**Implementation Notes:**
+- Created `src/enemies/EnemyRegistry.ts` — static class mapping string type IDs to `EnemyConstructor` functions. Methods: `register()`, `get()`, `has()`, `getRegisteredTypes()`, `clear()`. Warns on overwrite.
+- Created `src/enemies/EnemyFactory.ts` — async `create(typeId, position, eventBus, hitboxManager)` loads JSON from `data/enemies/{typeId}.json` via `fetch()`, caches result, instantiates via registry constructor. Sync `createSync()` variant for pre-loaded data. `preload()` for batch loading. `clearCache()` for teardown.
+- `EnemyData` TypeScript interface defined in `EnemyFactory.ts` — matches `DATA_SCHEMAS.md` `EnemyData` shape including `stats`, `perception`, `attacks` (`AttackDataSchema`), `drops`, and `fsm` (`FSMStateConfig`).
+- `EnemyConstructor` type: `new (data, position, eventBus, hitboxManager) => BaseEnemy` — subclasses receive JSON data to configure stats, FSM, and mesh.
+- Missing type ID throws descriptive error listing all registered types.
+- TypeScript compiles clean, Vite build succeeds.
+- **Files changed:** `src/enemies/EnemyRegistry.ts` (new), `src/enemies/EnemyFactory.ts` (new)
 
 ---
 
