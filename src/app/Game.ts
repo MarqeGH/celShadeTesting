@@ -10,6 +10,7 @@ import { PlayerStateMachine } from '../player/PlayerStateMachine';
 import { CameraController } from '../camera/CameraController';
 import { createCelMaterial } from '../rendering/CelShadingPipeline';
 import { TestArena } from '../world/RoomModule';
+import { WeaponSystem } from '../combat/WeaponSystem';
 
 export class Game {
   readonly scene: THREE.Scene;
@@ -26,6 +27,7 @@ export class Game {
   private playerModel: PlayerModel;
   private playerController: PlayerController;
   private playerStats: PlayerStats;
+  private weaponSystem: WeaponSystem;
   private playerStateMachine: PlayerStateMachine;
 
   constructor(container: HTMLElement) {
@@ -57,8 +59,9 @@ export class Game {
 
     this.playerController = new PlayerController(this.input, this.cameraController, this.playerModel);
     this.playerStats = new PlayerStats();
+    this.weaponSystem = new WeaponSystem();
     this.playerStateMachine = new PlayerStateMachine(
-      this.input, this.playerController, this.playerStats, this.playerModel, this.cameraController,
+      this.input, this.playerController, this.playerStats, this.playerModel, this.cameraController, this.weaponSystem,
     );
 
     this.postProcessing = new PostProcessing(

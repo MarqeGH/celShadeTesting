@@ -423,7 +423,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-017: Light Attack Implementation
+## [DONE] T-017: Light Attack Implementation
 
 | Field | Value |
 |-------|-------|
@@ -435,6 +435,19 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Implement light attack state. On attack input: enter light_attack state. Play attack animation (for now: scale player mesh X axis briefly to simulate swing). Attack has phases: telegraph (100ms), active (150ms), recovery (200ms). During active phase, create a hitbox (arc: 2.5m radius, 120° angle, in front of player). Consume 12 stamina. Support 2-hit combo: pressing attack during recovery window (last 100ms of recovery) queues second hit. |
 | **Acceptance Criteria** | Attack state activates on input. Hitbox appears during active window only. Combo chains on timed input. Stamina consumed per attack. Attack has visible feedback (mesh deformation or other). |
 | **Verification** | Attack, verify hitbox timing via debug visualization. Combo by pressing attack during window. |
+
+**Implementation Notes:**
+- Created `src/combat/WeaponSystem.ts` — manages active hitboxes with arc-based hit testing. `ActiveHitbox` stores origin, direction, radius, half-angle, and an `alreadyHit` set for one-hit-per-target enforcement. `testPointInArc()` checks if a target position falls within the arc sector on the XZ plane. Pre-allocated scratch vectors avoid per-call allocation.
+- Replaced `TimedStubState('light_attack', 0.45)` with full `LightAttackState` in `PlayerStateMachine.ts`:
+  - **Telegraph phase** (0–100ms): mesh scale.x ramps from 1.0 to 1.4 to telegraph the swing
+  - **Active phase** (100–250ms): arc hitbox created (2.5m radius, 120deg), follows player position. Peak scale deformation at 1.4x
+  - **Recovery phase** (250–450ms): hitbox removed, scale smoothly returns to 1.0. Combo window active in last 100ms
+- **2-hit combo**: pressing LMB during combo window (or buffered input via `consumeBuffer`) chains into a second hit. Internal `startNextComboHit()` resets timer/direction without FSM exit/re-enter to avoid re-entry guard. Max 2 hits per combo chain.
+- Added `weaponSystem: WeaponSystem` to `PlayerContext` interface and `PlayerStateMachine` constructor
+- Integrated into `Game.ts`: `WeaponSystem` instantiated and passed to `PlayerStateMachine`
+- Stamina drain (12) handled by existing `checkActionTransitions()` on first hit, and by `LightAttackState` for combo hits
+- TypeScript compiles clean, Vite build succeeds, no console errors
+- **Files changed:** `src/combat/WeaponSystem.ts` (new), `src/player/PlayerStateMachine.ts` (modified), `src/app/Game.ts` (modified)
 
 ---
 
