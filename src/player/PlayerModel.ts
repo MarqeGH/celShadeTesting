@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createCelMaterial } from '../rendering/CelShadingPipeline';
 
 /**
  * Player mesh: an icosahedron with per-frame vertex displacement
@@ -18,7 +19,7 @@ export class PlayerModel {
 
   constructor() {
     const geometry = new THREE.IcosahedronGeometry(0.8, 1);
-    const material = new THREE.MeshBasicMaterial({ color: 0x607080 });
+    const material = createCelMaterial(new THREE.Color(0x607080));
 
     // Store a copy of the original vertex positions to displace from
     const posAttr = geometry.getAttribute('position');

@@ -7,6 +7,7 @@ import { PlayerController } from '../player/PlayerController';
 import { PlayerStats } from '../player/PlayerStats';
 import { PlayerStateMachine } from '../player/PlayerStateMachine';
 import { CameraController } from '../camera/CameraController';
+import { createCelMaterial } from '../rendering/CelShadingPipeline';
 
 export class Game {
   readonly scene: THREE.Scene;
@@ -57,7 +58,7 @@ export class Game {
 
   private addTestCube(): void {
     const geometry = new THREE.BoxGeometry(1, 1, 1);
-    const material = new THREE.MeshBasicMaterial({ color: 0x4488aa });
+    const material = createCelMaterial(new THREE.Color(0x4488aa));
     this.testCube = new THREE.Mesh(geometry, material);
     this.scene.add(this.testCube);
   }

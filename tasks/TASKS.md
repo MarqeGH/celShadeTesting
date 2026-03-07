@@ -274,7 +274,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-011: Cel-Shading Pipeline
+## [DONE] T-011: Cel-Shading Pipeline
 
 | Field | Value |
 |-------|-------|
@@ -286,6 +286,14 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Create a custom ShaderMaterial that implements cel-shading. Use a 4-step toon ramp (shadow, mid, light, highlight). Pass in a single directional light direction. Output flat color bands with hard edges. Create a material factory function: `createCelMaterial(baseColor: Color)`. Apply to player mesh and test cube. |
 | **Acceptance Criteria** | Objects render with visible cel-shading bands. Shadow edges are hard (not smooth gradients). Material factory produces consistent results for any input color. Works with Three.js scene lighting. |
 | **Verification** | Visual inspection: objects should look like they have cartoon-style shading with distinct light/dark bands. |
+
+**Implementation Notes:**
+- Created `src/shaders/celVertex.ts` — passes world-space normal and position to fragment shader via varyings
+- Created `src/shaders/celFragment.ts` — 4-step toon ramp based on NdotL: highlight (>0.6, 1.1x), light (>0.2, 0.85x), mid (>-0.1, 0.6x), shadow (0.35x). Hard `if` thresholds produce flat color bands with no gradient blending
+- Created `src/rendering/CelShadingPipeline.ts` — `createCelMaterial(baseColor, lightDirection?)` factory returns a `ShaderMaterial` with uniforms for base color, light direction (default top-right-front), and ambient color
+- Applied cel materials to test cube in `Game.ts` and player icosahedron in `PlayerModel.ts`, replacing `MeshBasicMaterial`
+- TypeScript compiles clean, no console errors
+- **Files changed:** `src/shaders/celVertex.ts` (new), `src/shaders/celFragment.ts` (new), `src/rendering/CelShadingPipeline.ts` (new), `src/app/Game.ts` (modified), `src/player/PlayerModel.ts` (modified)
 
 ---
 
