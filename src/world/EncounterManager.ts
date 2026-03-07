@@ -3,6 +3,7 @@ import { BaseEnemy } from '../enemies/BaseEnemy';
 import { EnemyFactory } from '../enemies/EnemyFactory';
 import { CubeSentinel } from '../enemies/CubeSentinel';
 import { CombatSystem } from '../combat/CombatSystem';
+import { StaggerSystem } from '../combat/StaggerSystem';
 import { HitboxManager } from '../combat/HitboxManager';
 import { EventBus } from '../app/EventBus';
 
@@ -41,6 +42,7 @@ export class EncounterManager {
   private eventBus: EventBus;
   private hitboxManager: HitboxManager;
   private combatSystem: CombatSystem;
+  private staggerSystem: StaggerSystem;
   private scene: THREE.Scene;
 
   private state: EncounterState = 'idle';
@@ -63,11 +65,13 @@ export class EncounterManager {
     eventBus: EventBus,
     hitboxManager: HitboxManager,
     combatSystem: CombatSystem,
+    staggerSystem: StaggerSystem,
     scene: THREE.Scene,
   ) {
     this.eventBus = eventBus;
     this.hitboxManager = hitboxManager;
     this.combatSystem = combatSystem;
+    this.staggerSystem = staggerSystem;
     this.scene = scene;
   }
 
@@ -123,6 +127,7 @@ export class EncounterManager {
       // Clean up dead enemies that finished their death animation
       if (enemy.isDead() && !enemy.isDying) {
         this.combatSystem.unregisterEntity(enemy.entityId);
+        this.staggerSystem.unregister(enemy.entityId);
         this.allEnemies.splice(i, 1);
       }
     }
@@ -179,6 +184,7 @@ export class EncounterManager {
    */
   dispose(): void {
     for (const enemy of this.allEnemies) {
+      this.staggerSystem.unregister(enemy.entityId);
       enemy.dispose();
     }
     this.allEnemies = [];
@@ -214,6 +220,19 @@ export class EncounterManager {
 
           this.scene.add(enemy.group);
           this.combatSystem.registerEntity(enemy);
+
+          // Register enemy poise with StaggerSystem
+          const stats = enemy.stats;
+          this.staggerSystem.register(
+            enemy.entityId,
+            {
+              maxPoise: stats.maxPoise,
+              regenDelay: stats.poiseRegenDelay,
+              regenRate: stats.poiseRegenRate,
+            },
+            () => enemy.getFSM().setState('staggered'),
+          );
+
           this.allEnemies.push(enemy);
           this.waveEnemies.push(enemy);
         });

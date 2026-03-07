@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { HitboxManager, HitResult } from './HitboxManager';
 import { calculateDamage } from './DamageCalculator';
 import { EventBus } from '../app/EventBus';
+import { StaggerSystem } from './StaggerSystem';
 
 // ── Entity ID constants ──────────────────────────────────────────
 
@@ -39,11 +40,13 @@ export interface CombatEntity {
 export class CombatSystem {
   private hitboxManager: HitboxManager;
   private eventBus: EventBus;
+  private staggerSystem: StaggerSystem;
   private entities = new Map<number, CombatEntity>();
 
-  constructor(hitboxManager: HitboxManager, eventBus: EventBus) {
+  constructor(hitboxManager: HitboxManager, eventBus: EventBus, staggerSystem: StaggerSystem) {
     this.hitboxManager = hitboxManager;
     this.eventBus = eventBus;
+    this.staggerSystem = staggerSystem;
 
     this.hitboxManager.setOnHitCallback((hit) => this.onHit(hit));
   }
@@ -76,6 +79,11 @@ export class CombatSystem {
 
     const result = calculateDamage(hit.attackData);
     const remainingHp = defender.takeDamage(result.damage);
+
+    // Apply poise damage via StaggerSystem
+    if (result.staggerDamage > 0) {
+      this.staggerSystem.applyStaggerDamage(hit.defenderId, result.staggerDamage);
+    }
 
     if (defender.type === 'player') {
       this.eventBus.emit('PLAYER_DAMAGED', {

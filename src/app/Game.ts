@@ -13,6 +13,7 @@ import { TestArena } from '../world/RoomModule';
 import { WeaponSystem } from '../combat/WeaponSystem';
 import { HitboxManager } from '../combat/HitboxManager';
 import { CombatSystem, CombatEntity, PLAYER_ENTITY_ID } from '../combat/CombatSystem';
+import { StaggerSystem, PLAYER_POISE_CONFIG } from '../combat/StaggerSystem';
 import { EventBus } from './EventBus';
 import '../enemies/TriangleShard'; // side-effect: registers in EnemyRegistry
 import '../enemies/CubeSentinel'; // side-effect: registers in EnemyRegistry
@@ -44,6 +45,7 @@ export class Game {
   private weaponSystem: WeaponSystem;
   private hitboxManager: HitboxManager;
   private combatSystem: CombatSystem;
+  private staggerSystem: StaggerSystem;
   private playerStateMachine: PlayerStateMachine;
   private hud: HUD;
   private uiManager: UIManager;
@@ -88,10 +90,11 @@ export class Game {
       this.input, this.playerController, this.playerStats, this.playerModel, this.cameraController, this.weaponSystem,
     );
 
-    // Combat system: EventBus → HitboxManager → CombatSystem
+    // Combat system: EventBus → HitboxManager → StaggerSystem → CombatSystem
     this.eventBus = new EventBus();
     this.hitboxManager = new HitboxManager();
-    this.combatSystem = new CombatSystem(this.hitboxManager, this.eventBus);
+    this.staggerSystem = new StaggerSystem();
+    this.combatSystem = new CombatSystem(this.hitboxManager, this.eventBus, this.staggerSystem);
 
     // Register player as a damageable combat entity
     // Debug overlay reference captured via closure after construction below
@@ -113,9 +116,16 @@ export class Game {
     };
     this.combatSystem.registerEntity(playerEntity);
 
+    // Register player poise with StaggerSystem
+    this.staggerSystem.register(
+      PLAYER_ENTITY_ID,
+      PLAYER_POISE_CONFIG,
+      () => this.playerStateMachine.fsm.setState('stagger'),
+    );
+
     // Encounter manager
     this.encounterManager = new EncounterManager(
-      this.eventBus, this.hitboxManager, this.combatSystem, this.scene,
+      this.eventBus, this.hitboxManager, this.combatSystem, this.staggerSystem, this.scene,
     );
 
     // HUD and UI
@@ -234,6 +244,7 @@ export class Game {
     this.encounterManager.update(dt, playerPos);
 
     this.combatSystem.update();
+    this.staggerSystem.update(dt);
     this.doorSystem.update(dt);
     this.playerStats.update(dt);
     this.uiManager.update();
@@ -342,6 +353,7 @@ export class Game {
     this.uiManager.dispose();
     this.debugOverlay.dispose();
     this.hitboxManager.clear();
+    this.staggerSystem.clear();
     this.eventBus.clear();
     window.removeEventListener('keydown', this.onToggleOutline);
     window.removeEventListener('resize', this.onResize);

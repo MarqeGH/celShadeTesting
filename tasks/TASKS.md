@@ -796,7 +796,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-031: Stagger System
+## [DONE] T-031: Stagger System
 
 | Field | Value |
 |-------|-------|
@@ -808,6 +808,16 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Implement poise-based stagger. Every damageable entity has poise (current/max). Attacks deal stagger damage (separate from HP damage). When poise reaches 0: entity enters staggered state for configured duration. Poise regens after a delay. Player and enemies both use this system. On player stagger: brief inability to act. On enemy stagger: vulnerable window. |
 | **Acceptance Criteria** | Hitting an enemy reduces their poise. At 0 poise, enemy enters staggered state. Poise regens after delay. Player poise works identically. Stagger duration matches config. |
 | **Verification** | Hit enemy repeatedly, verify stagger triggers at threshold. Verify poise regens after delay. |
+
+**Implementation Notes:**
+- Created `src/combat/StaggerSystem.ts` — centralized poise management for all combat entities. `PoiseConfig` defines maxPoise, regenDelay, regenRate per entity. `register(entityId, config, onPoiseBreak)` tracks poise; `applyStaggerDamage(entityId, amount)` reduces poise and fires callback on break; `update(dt)` handles regen after delay. Poise resets to max on break.
+- Player poise: 60 max, 1s regen delay, 20/s regen rate. On break → FSM enters `stagger` state (0.5s stub).
+- Enemy poise: uses existing stats from JSON data (e.g. TriangleShard poise=30, CubeSentinel poise=40). On break → FSM enters `staggered` state (1s for shards, 0.8s for sentinels).
+- Modified `CombatSystem.ts` — now receives `StaggerSystem` in constructor; `onHit()` applies poise damage via `staggerSystem.applyStaggerDamage()` after HP damage.
+- Modified `EncounterManager.ts` — accepts `StaggerSystem`; registers each spawned enemy's poise config + stagger callback; unregisters on death cleanup and dispose.
+- Modified `Game.ts` — creates `StaggerSystem`, passes to `CombatSystem` and `EncounterManager`, registers player poise, calls `staggerSystem.update(dt)` each frame, cleans up on dispose.
+- TypeScript compiles clean, Vite build succeeds.
+- **Files changed:** `src/combat/StaggerSystem.ts` (new), `src/combat/CombatSystem.ts` (modified), `src/world/EncounterManager.ts` (modified), `src/app/Game.ts` (modified)
 
 ---
 
