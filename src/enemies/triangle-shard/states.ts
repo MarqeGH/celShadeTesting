@@ -1,34 +1,19 @@
 import * as THREE from 'three';
-import { BaseEnemy, EnemyContext } from './BaseEnemy';
-import { SphereShape, HitboxManager, Hitbox } from '../combat/HitboxManager';
-import { EnemyData, AttackDataSchema } from './EnemyFactory';
-import { EnemyRegistry } from './EnemyRegistry';
-import { EventBus } from '../app/EventBus';
-import { AIState } from '../ai/AIState';
-import { createCelMaterial } from '../rendering/CelShadingPipeline';
-
-// ── Constants ────────────────────────────────────────────────────
-
-const TRIANGLE_COLOR = new THREE.Color(0xcc4444);
-const TELEGRAPH_COLOR = new THREE.Color(1.0, 0.15, 0.05);
+import { AIState } from '../../ai/AIState';
+import { EnemyContext } from '../BaseEnemy';
+import { HitboxManager, SphereShape, Hitbox } from '../../combat/HitboxManager';
+import { AttackDataSchema } from '../EnemyFactory';
+import { distToPlayer, pickAttack } from '../shared';
+import type { TriangleShard } from './TriangleShard';
 
 // ── Scratch vectors ─────────────────────────────────────────────
 
 const _toPlayer = new THREE.Vector3();
 
-// ── Helper: pick a random attack from pool ──────────────────────
-
-function pickAttack(attacks: AttackDataSchema[], pool: string[]): AttackDataSchema {
-  const candidates = attacks.filter(a => pool.includes(a.id));
-  return candidates[Math.floor(Math.random() * candidates.length)];
-}
-
-// ── FSM States ──────────────────────────────────────────────────
-
 /**
  * Idle: wait until player enters aggro range.
  */
-class ShardIdleState implements AIState<EnemyContext> {
+export class ShardIdleState implements AIState<EnemyContext> {
   readonly name = 'idle';
   private aggroRange: number;
 
@@ -53,7 +38,7 @@ class ShardIdleState implements AIState<EnemyContext> {
  * Chase: move toward the player. Transition to attack when in range,
  * or back to idle when player leaves aggro range.
  */
-class ShardChaseState implements AIState<EnemyContext> {
+export class ShardChaseState implements AIState<EnemyContext> {
   readonly name = 'chase';
   private aggroRange: number;
   private attackRange: number;
@@ -90,7 +75,7 @@ class ShardChaseState implements AIState<EnemyContext> {
  * During telegraph, mesh glows red. During lunge active phase,
  * the enemy dashes forward. During recovery, vulnerable.
  */
-class ShardAttackState implements AIState<EnemyContext> {
+export class ShardAttackState implements AIState<EnemyContext> {
   readonly name = 'attack';
 
   private shard: TriangleShard;
@@ -235,7 +220,7 @@ class ShardAttackState implements AIState<EnemyContext> {
 /**
  * Attack cooldown: brief pause between consecutive attacks.
  */
-class ShardAttackCooldownState implements AIState<EnemyContext> {
+export class ShardAttackCooldownState implements AIState<EnemyContext> {
   readonly name = 'attack_cooldown';
   private shard: TriangleShard;
   private cooldown: number;
@@ -280,7 +265,7 @@ class ShardAttackCooldownState implements AIState<EnemyContext> {
 /**
  * Staggered: stunned after poise break, then recovers to chase.
  */
-class ShardStaggeredState implements AIState<EnemyContext> {
+export class ShardStaggeredState implements AIState<EnemyContext> {
   readonly name = 'staggered';
   private duration: number;
   private timer = 0;
@@ -303,134 +288,3 @@ class ShardStaggeredState implements AIState<EnemyContext> {
 
   exit(_ctx: EnemyContext): void {}
 }
-
-// ── Utility ─────────────────────────────────────────────────────
-
-function distToPlayer(ctx: EnemyContext): number {
-  const pos = ctx.enemy.getPosition();
-  const dx = pos.x - ctx.playerPosition.x;
-  const dz = pos.z - ctx.playerPosition.z;
-  return Math.sqrt(dx * dx + dz * dz);
-}
-
-// ── TriangleShard class ─────────────────────────────────────────
-
-export class TriangleShard extends BaseEnemy {
-  readonly attackRange: number;
-  private _hitboxMgr: HitboxManager;
-  private _attacks: AttackDataSchema[];
-  private baseColor: THREE.Color;
-
-  constructor(
-    data: EnemyData,
-    position: THREE.Vector3,
-    eventBus: EventBus,
-    hitboxManager: HitboxManager,
-  ) {
-    super(
-      data.id,
-      {
-        maxHp: data.stats.maxHP,
-        moveSpeed: data.stats.moveSpeed,
-        turnSpeed: data.stats.turnSpeed,
-        poise: data.stats.poise,
-        maxPoise: data.stats.poise,
-        poiseRegenDelay: data.stats.poiseRegenDelay / 1000,
-        poiseRegenRate: data.stats.poiseRegenRate,
-      },
-      eventBus,
-      hitboxManager,
-    );
-
-    this.attackRange = data.perception.attackRange;
-    this._hitboxMgr = hitboxManager;
-    this._attacks = data.attacks;
-    this.baseColor = TRIANGLE_COLOR.clone();
-
-    this.group.position.copy(position);
-    this.group.position.y = 0;
-
-    this.initialize();
-  }
-
-  // ── Mesh creation ─────────────────────────────────────────────
-
-  protected createMesh(): THREE.Mesh {
-    // Flat isosceles triangle: ConeGeometry with 3 radial segments
-    const geometry = new THREE.ConeGeometry(0.6, 1.2, 3, 1);
-
-    // Flatten on Z-axis for blade-like thin profile
-    const positions = geometry.attributes.position;
-    for (let i = 0; i < positions.count; i++) {
-      const z = positions.getZ(i);
-      positions.setZ(i, z * 0.3);
-    }
-    positions.needsUpdate = true;
-    geometry.computeVertexNormals();
-
-    const material = createCelMaterial(this.baseColor);
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.y = 0.6;
-
-    return mesh;
-  }
-
-  // ── Hurtbox ───────────────────────────────────────────────────
-
-  protected getHurtboxShape(): SphereShape {
-    return {
-      type: 'sphere',
-      center: this.group.position,
-      radius: 0.7,
-    };
-  }
-
-  // ── FSM ───────────────────────────────────────────────────────
-
-  protected initFSM(): void {
-    const aggroRange = 10;
-    const attackRange = this.attackRange;
-    const attackPool = ['lunge', 'slash'];
-    const attackCooldown = 800;
-    const staggerDuration = 1000;
-
-    this.fsm
-      .addState(new ShardIdleState(aggroRange))
-      .addState(new ShardChaseState(this, aggroRange, attackRange))
-      .addState(new ShardAttackState(this, this._hitboxMgr, this._attacks, attackPool))
-      .addState(new ShardAttackCooldownState(this, attackCooldown, attackRange))
-      .addState(new ShardStaggeredState(staggerDuration));
-
-    this.fsm.setState('idle');
-  }
-
-  // ── Public wrappers for protected BaseEnemy helpers ────────────
-
-  moveTowardPublic(target: THREE.Vector3, dt: number): void {
-    this.moveToward(target, dt);
-  }
-
-  faceDirectionPublic(dir: THREE.Vector3, dt: number): void {
-    this.faceDirection(dir, dt);
-  }
-
-  // ── Telegraph glow ────────────────────────────────────────────
-
-  setTelegraphGlow(active: boolean): void {
-    const mesh = this.group.children[0] as THREE.Mesh | undefined;
-    if (!mesh) return;
-
-    const mat = mesh.material;
-    if (mat instanceof THREE.ShaderMaterial && mat.uniforms['uBaseColor']) {
-      if (active) {
-        mat.uniforms['uBaseColor'].value.copy(TELEGRAPH_COLOR);
-      } else {
-        mat.uniforms['uBaseColor'].value.copy(this.baseColor);
-      }
-    }
-  }
-}
-
-// ── Register in EnemyRegistry ───────────────────────────────────
-
-EnemyRegistry.register('triangle-shard', TriangleShard);

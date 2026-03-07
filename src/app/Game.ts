@@ -17,8 +17,8 @@ import { HitboxManager } from '../combat/HitboxManager';
 import { CombatSystem, CombatEntity, PLAYER_ENTITY_ID } from '../combat/CombatSystem';
 import { StaggerSystem, PLAYER_POISE_CONFIG } from '../combat/StaggerSystem';
 import { EventBus } from './EventBus';
-import '../enemies/TriangleShard'; // side-effect: registers in EnemyRegistry
-import '../enemies/CubeSentinel'; // side-effect: registers in EnemyRegistry
+import '../enemies/triangle-shard/TriangleShard'; // side-effect: registers in EnemyRegistry
+import '../enemies/cube-sentinel/CubeSentinel'; // side-effect: registers in EnemyRegistry
 import { EncounterManager, EncounterData } from '../world/EncounterManager';
 import { HUD } from '../ui/HUD';
 import { UIManager } from '../ui/UIManager';

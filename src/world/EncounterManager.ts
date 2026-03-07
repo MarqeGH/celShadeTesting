@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { BaseEnemy } from '../enemies/BaseEnemy';
 import { EnemyFactory } from '../enemies/EnemyFactory';
-import { CubeSentinel } from '../enemies/CubeSentinel';
+import { CubeSentinel } from '../enemies/cube-sentinel/CubeSentinel';
 import { CombatSystem } from '../combat/CombatSystem';
 import { StaggerSystem } from '../combat/StaggerSystem';
 import { HitboxManager } from '../combat/HitboxManager';

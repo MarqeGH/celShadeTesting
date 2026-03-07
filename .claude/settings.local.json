@@ -7,7 +7,12 @@
       "Bash(npx vite build)",
       "Bash(timeout 5 npx vite --host)",
       "mcp__Claude_Preview__preview_start",
-      "Bash(npx vite build --logLevel error)"
+      "Bash(npx vite build --logLevel error)",
+      "Bash(find /c/Users/tormo/Documents/VibeGames/Celtest/src -type f -name \"*.ts\" -exec wc -l {} +)",
+      "Bash(wc -l /c/Users/tormo/Documents/VibeGames/Celtest/data/enemies/*.json)",
+      "Bash(wc -l /c/Users/tormo/Documents/VibeGames/Celtest/docs/*.md)",
+      "Bash(git mv src/enemies/CubeSentinel.ts src/enemies/cube-sentinel/CubeSentinel.ts)",
+      "Bash(git mv src/enemies/TriangleShard.ts src/enemies/triangle-shard/TriangleShard.ts)"
     ]
   }
 }
