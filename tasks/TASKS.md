@@ -613,7 +613,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-024: Data Loader
+## [DONE] T-024: Data Loader
 
 | Field | Value |
 |-------|-------|
@@ -625,6 +625,18 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Create AssetLoader class with methods: `loadJSON<T>(path): Promise<T>`, `loadGLTF(path): Promise<Group>`, `loadTexture(path): Promise<Texture>`, `loadAudio(path): Promise<AudioBuffer>`. Include loading progress tracking. Cache loaded assets to avoid double-loading. Handle errors gracefully with descriptive messages. |
 | **Acceptance Criteria** | JSON files load and parse correctly with type safety. GLTF models load into Three.js Groups. Texture loading works. Caching prevents duplicate loads. Errors produce clear messages. |
 | **Verification** | Load `data/enemies/triangle-shard.json`, verify parsed data matches file. Load same file twice, verify cache hit. |
+
+**Implementation Notes:**
+- Created `src/engine/AssetLoader.ts` — centralized asset loader with per-type caching
+- `loadJSON<T>(path)` — fetches and parses JSON with generic type safety, caches by path. Descriptive error messages include path and HTTP status
+- `loadGLTF(path)` — uses Three.js `GLTFLoader`, caches the original `scene` Group, returns a `.clone()` on each call so callers never mutate the cached copy
+- `loadTexture(path)` — uses Three.js `TextureLoader`, caches by path
+- `loadAudio(path)` — uses Howler.js `Howl` with preload, resolves on `onload`, rejects on `onloaderror`, caches by path
+- Progress tracking: `totalAssets`/`loadedAssets` counters, `getProgress()` returns 0–1 ratio, optional `setProgressCallback(cb)` for external listeners
+- `dispose()` clears all caches and releases GPU resources (disposes geometries, materials, textures) and unloads Howl audio
+- All error paths wrap with `AssetLoader: Failed to load {type} "{path}" — {details}` for clear debugging
+- TypeScript compiles clean, Vite build succeeds
+- **Files changed:** `src/engine/AssetLoader.ts` (new)
 
 ---
 
