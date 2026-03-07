@@ -558,7 +558,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-022: Triangle Shard Enemy
+## [DONE] T-022: Triangle Shard Enemy
 
 | Field | Value |
 |-------|-------|
@@ -570,6 +570,19 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Implement the Triangle Shard enemy per ENEMY_BIBLE.md. Mesh: flat triangle (ConeGeometry with 3 segments, flattened). FSM states: idle (wait), chase (move toward player), attack (lunge or slash), staggered. Lunge: telegraph 400ms (glow red), dash forward 4m, recovery 600ms. Slash: telegraph 300ms, 90° sweep, recovery 400ms. 30 HP. Move speed 6 m/s. |
 | **Acceptance Criteria** | Triangle Shard spawns with correct mesh. Aggros on player proximity. Chases player. Attacks when in range with correct telegraphs and timing. Takes damage and dies. Drops shards on death. |
 | **Verification** | Spawn in test arena, walk near it, observe chase → attack → telegraph → hit detection cycle. Kill it, verify death effect and shard drop. |
+
+**Implementation Notes:**
+- Created `src/enemies/TriangleShard.ts` — extends `BaseEnemy` with flat isosceles triangle mesh (`ConeGeometry` 3 segments, Z-axis flattened to 0.3 for blade-like profile), cel-shaded in red (#cc4444)
+- FSM states: `ShardIdleState` (aggro at 10m), `ShardChaseState` (moves toward player at 6 m/s), `ShardAttackState` (telegraph with red glow → sphere hitbox during active phase → recovery), `ShardAttackCooldownState` (800ms pause, faces player), `ShardStaggeredState` (1s stun on poise break)
+- Attack selection: randomly picks from `lunge` (400ms telegraph, 200ms active, 4m dash at 20 m/s, 15 dmg) or `slash` (300ms telegraph, 150ms active, 2m range, 10 dmg) per JSON data
+- Telegraph visual: swaps cel material `uBaseColor` to bright red (#ff2600) during telegraph, restores on active phase start
+- Hitbox: sphere shape centered in front of enemy along locked dash direction. Created on active phase start, removed on recovery start. One-hit-per-target enforced by HitboxManager
+- Attack data loaded from `data/enemies/triangle-shard.json` via `EnemyFactory.create()` async fetch with caching
+- Integrated into `Game.ts`: 3 Triangle Shards spawned at (5,0,5), (-5,0,-5), (6,0,-4). Enemies updated per frame with player position. Dead enemies cleaned up from array and unregistered from CombatSystem
+- `EnemyRegistry.register()` called via side-effect import of TriangleShard module
+- Public wrappers (`moveTowardPublic`, `faceDirectionPublic`) expose protected `BaseEnemy` helpers to FSM states
+- TypeScript compiles clean, Vite build succeeds, no console errors, all 3 enemies spawn and initialize FSMs
+- **Files changed:** `src/enemies/TriangleShard.ts` (new), `src/app/Game.ts` (modified)
 
 ---
 

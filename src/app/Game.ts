@@ -14,6 +14,9 @@ import { WeaponSystem } from '../combat/WeaponSystem';
 import { HitboxManager } from '../combat/HitboxManager';
 import { CombatSystem, CombatEntity, PLAYER_ENTITY_ID } from '../combat/CombatSystem';
 import { EventBus } from './EventBus';
+import { BaseEnemy } from '../enemies/BaseEnemy';
+import { EnemyFactory } from '../enemies/EnemyFactory';
+import '../enemies/TriangleShard'; // side-effect: registers in EnemyRegistry
 
 export class Game {
   readonly scene: THREE.Scene;
@@ -35,6 +38,7 @@ export class Game {
   private hitboxManager: HitboxManager;
   private combatSystem: CombatSystem;
   private playerStateMachine: PlayerStateMachine;
+  private enemies: BaseEnemy[] = [];
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -90,6 +94,9 @@ export class Game {
     };
     this.combatSystem.registerEntity(playerEntity);
 
+    // Spawn test enemies
+    this.spawnEnemies();
+
     this.postProcessing = new PostProcessing(
       this.renderer.renderer,
       this.scene,
@@ -109,6 +116,26 @@ export class Game {
     this.gameLoop.start();
   }
 
+  private spawnEnemies(): void {
+    const spawnPositions = [
+      new THREE.Vector3(5, 0, 5),
+      new THREE.Vector3(-5, 0, -5),
+      new THREE.Vector3(6, 0, -4),
+    ];
+
+    for (const pos of spawnPositions) {
+      EnemyFactory.create('triangle-shard', pos, this.eventBus, this.hitboxManager)
+        .then((enemy) => {
+          this.enemies.push(enemy);
+          this.scene.add(enemy.group);
+          this.combatSystem.registerEntity(enemy);
+        })
+        .catch((err) => {
+          console.error('[Game] Failed to spawn enemy:', err);
+        });
+    }
+  }
+
   private addTestCube(): void {
     const geometry = new THREE.BoxGeometry(1, 1, 1);
     const material = createCelMaterial(new THREE.Color(0x4488aa));
@@ -121,6 +148,18 @@ export class Game {
 
     this.playerStateMachine.update(dt);
     this.playerController.resolveWallCollisions(this.testArena.wallColliders);
+
+    // Update enemies
+    const playerPos = this.playerModel.mesh.position;
+    for (let i = this.enemies.length - 1; i >= 0; i--) {
+      const enemy = this.enemies[i];
+      enemy.update(dt, playerPos);
+      if (enemy.isDead() && !enemy.isDying) {
+        this.combatSystem.unregisterEntity(enemy.entityId);
+        this.enemies.splice(i, 1);
+      }
+    }
+
     this.combatSystem.update();
     this.playerStats.update(dt);
     this.playerModel.update(dt);
@@ -163,6 +202,10 @@ export class Game {
     this.playerModel.dispose();
     this.testArena.dispose();
     this.postProcessing.dispose();
+    for (const enemy of this.enemies) {
+      enemy.dispose();
+    }
+    this.enemies.length = 0;
     this.hitboxManager.clear();
     this.eventBus.clear();
     window.removeEventListener('keydown', this.onToggleOutline);
