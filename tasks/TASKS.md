@@ -640,7 +640,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-025: HUD (Health, Stamina, Shards)
+## [DONE] T-025: HUD (Health, Stamina, Shards)
 
 | Field | Value |
 |-------|-------|
@@ -652,6 +652,17 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Create HTML/CSS overlay HUD. Elements: HP bar (red, top-left), Stamina bar (green, below HP), Shard count (number, top-right), Heal charges (icons, below HP bar). Bars animate smoothly on value change (CSS transitions). Subscribe to EventBus for updates. UIManager controls HUD visibility (show during gameplay, hide in menus). |
 | **Acceptance Criteria** | HP bar reflects current HP with smooth animation. Stamina bar reflects current stamina. Shard count updates on collection. Heal charges display correctly. HUD can be shown/hidden. |
 | **Verification** | Take damage, verify HP bar decreases smoothly. Use stamina, verify bar changes. Collect shard, verify count updates. |
+
+**Implementation Notes:**
+- Created `src/ui/HUD.ts` — HTML/CSS overlay with HP bar (red), Stamina bar (green), heal charge icons (blue squares), and shard counter (yellow, top-right). All elements `position: absolute` over the Three.js canvas with `pointer-events: none`
+- CSS transitions (0.25s ease-out) on bar widths for smooth animation on value changes
+- Polls `PlayerStats` each frame for HP/stamina percentages; heal charge icons rebuild only when count changes
+- Stamina bar turns brown (`#806030`) during exhaustion state via CSS class toggle
+- Shard count increments via `EventBus` subscription to `ENEMY_DIED` events
+- Created `src/ui/UIManager.ts` — manages HUD visibility with `gameplay`/`menu`/`hidden` states. Defaults to `gameplay` (HUD visible). Delegates `update()` to HUD only during gameplay
+- Integrated into `Game.ts`: HUD constructed with `PlayerStats` + `EventBus` refs, attached to game container, updated each frame via `UIManager.update()`, disposed on cleanup
+- TypeScript compiles clean, Vite build succeeds, no console errors
+- **Files changed:** `src/ui/HUD.ts` (new), `src/ui/UIManager.ts` (new), `src/app/Game.ts` (modified)
 
 ---
 

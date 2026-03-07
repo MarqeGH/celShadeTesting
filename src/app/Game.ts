@@ -18,6 +18,8 @@ import { BaseEnemy } from '../enemies/BaseEnemy';
 import { EnemyFactory } from '../enemies/EnemyFactory';
 import '../enemies/TriangleShard'; // side-effect: registers in EnemyRegistry
 import { CubeSentinel } from '../enemies/CubeSentinel'; // side-effect: registers in EnemyRegistry
+import { HUD } from '../ui/HUD';
+import { UIManager } from '../ui/UIManager';
 
 export class Game {
   readonly scene: THREE.Scene;
@@ -39,6 +41,8 @@ export class Game {
   private hitboxManager: HitboxManager;
   private combatSystem: CombatSystem;
   private playerStateMachine: PlayerStateMachine;
+  private hud: HUD;
+  private uiManager: UIManager;
   private enemies: BaseEnemy[] = [];
 
   constructor(container: HTMLElement) {
@@ -94,6 +98,11 @@ export class Game {
       getPosition: () => playerMesh.position,
     };
     this.combatSystem.registerEntity(playerEntity);
+
+    // HUD and UI
+    this.hud = new HUD(this.playerStats, this.eventBus);
+    this.hud.attach(container);
+    this.uiManager = new UIManager(this.hud);
 
     // Spawn test enemies
     this.spawnEnemies();
@@ -183,6 +192,7 @@ export class Game {
 
     this.combatSystem.update();
     this.playerStats.update(dt);
+    this.uiManager.update();
     this.playerModel.update(dt);
 
     // Update camera orbit and follow
@@ -227,6 +237,7 @@ export class Game {
       enemy.dispose();
     }
     this.enemies.length = 0;
+    this.uiManager.dispose();
     this.hitboxManager.clear();
     this.eventBus.clear();
     window.removeEventListener('keydown', this.onToggleOutline);
