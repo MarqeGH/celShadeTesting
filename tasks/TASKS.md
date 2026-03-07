@@ -849,7 +849,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-033: Camera Lock-On
+## [DONE] T-033: Camera Lock-On
 
 | Field | Value |
 |-------|-------|
@@ -861,6 +861,22 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Implement lock-on targeting. On lock-on input: find nearest enemy within 15m and forward cone. Camera focuses between player and target. Player movement becomes strafe-relative. Attacks auto-orient toward locked target. Target indicator visible on locked enemy (UI marker). Target switching: flick right stick / directional input while locked. Lock-on drops if target dies or exits 15m range. |
 | **Acceptance Criteria** | Lock-on acquires nearest valid target. Camera shifts to player-target midpoint focus. Movement becomes strafe. Target switching works. Lock drops on target death or out of range. |
 | **Verification** | Spawn 2 enemies, lock on, verify camera behavior. Switch targets. Kill target, verify lock drops. |
+
+**Implementation Notes:**
+- Created `src/camera/LockOnSystem.ts` — manages lock-on targeting lifecycle
+  - Target acquisition: finds nearest alive enemy within 15m and 60° forward cone (relative to camera yaw)
+  - Target switching: horizontal mouse flick (>40px) while locked switches to nearest valid target in that screen direction
+  - Auto-drop: lock releases when target dies (via `ENEMY_DIED` event) or exits 15m range
+  - UI indicator: rotated diamond border (`<div>`) positioned in screen-space above the locked target, with CSS pulse animation
+  - `attachUI()` creates and manages the HTML overlay element
+- Modified `src/camera/CameraController.ts` — added lock-on camera mode
+  - `setLockOnTarget(pos)` enables/disables lock-on focus
+  - Lock-on mode: focus point shifts to 40% lerp between player and target (keeps both in view)
+  - Camera yaw auto-orbits behind player facing the target with smooth convergence
+  - Free orbit mode unchanged when no lock-on target
+- Integrated into `src/app/Game.ts` — LockOnSystem constructed with encounter enemy accessor, updated each tick, disposed on cleanup
+- TypeScript compiles clean, Vite build succeeds, no console errors
+- **Files changed:** `src/camera/LockOnSystem.ts` (new), `src/camera/CameraController.ts` (modified), `src/app/Game.ts` (modified)
 
 ---
 

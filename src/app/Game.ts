@@ -8,6 +8,7 @@ import { PlayerController } from '../player/PlayerController';
 import { PlayerStats } from '../player/PlayerStats';
 import { PlayerStateMachine } from '../player/PlayerStateMachine';
 import { CameraController } from '../camera/CameraController';
+import { LockOnSystem } from '../camera/LockOnSystem';
 import { createCelMaterial } from '../rendering/CelShadingPipeline';
 import { TestArena } from '../world/RoomModule';
 import { WeaponSystem } from '../combat/WeaponSystem';
@@ -53,6 +54,7 @@ export class Game {
   private damageNumbers: DamageNumbers;
   private debugOverlay: DebugOverlay;
   private encounterManager: EncounterManager;
+  private lockOnSystem: LockOnSystem;
   private doorSystem: DoorSystem;
   private roomAssembler: RoomAssembler;
   private assetLoader: AssetLoader;
@@ -129,6 +131,14 @@ export class Game {
     this.encounterManager = new EncounterManager(
       this.eventBus, this.hitboxManager, this.combatSystem, this.staggerSystem, this.scene,
     );
+
+    // Lock-on system
+    this.lockOnSystem = new LockOnSystem(
+      this.input,
+      this.eventBus,
+      () => this.encounterManager.getEnemies(),
+    );
+    this.lockOnSystem.attachUI(container, this.camera);
 
     // Damage numbers
     this.damageNumbers = new DamageNumbers(
@@ -259,6 +269,10 @@ export class Game {
     this.playerModel.update(dt);
     this.debugOverlay.update(dt);
 
+    // Lock-on system: acquire, switch, drop targets
+    this.lockOnSystem.update(playerPos, this.cameraController.getYaw());
+    this.cameraController.setLockOnTarget(this.lockOnSystem.getTargetPosition());
+
     // Update camera orbit and follow
     this.cameraController.update(dt, this.playerModel.mesh.position);
 
@@ -353,6 +367,7 @@ export class Game {
     this.testArena.dispose();
     this.postProcessing.dispose();
     this.encounterManager.dispose();
+    this.lockOnSystem.dispose();
     this.doorSystem.dispose();
     this.assetLoader.dispose();
     if (this.currentRoom) {
