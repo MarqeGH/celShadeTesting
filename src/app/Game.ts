@@ -31,6 +31,7 @@ import { AssetLoader } from '../engine/AssetLoader';
 import { PickupSystem } from '../interactions/PickupSystem';
 import { MenuSystem } from '../ui/MenuSystem';
 import { RunState } from '../progression/RunState';
+import { ParticleSystem } from '../rendering/ParticleSystem';
 
 export class Game {
   readonly scene: THREE.Scene;
@@ -65,6 +66,7 @@ export class Game {
   private assetLoader: AssetLoader;
   private pickupSystem: PickupSystem;
   private menuSystem: MenuSystem;
+  private particleSystem: ParticleSystem;
   private runState: RunState;
   private currentRoom: RoomModule | null = null;
 
@@ -142,6 +144,11 @@ export class Game {
 
     // Pickup system — listens for ENEMY_DIED, spawns shard pickups
     this.pickupSystem = new PickupSystem(this.scene, this.eventBus);
+
+    // Particle system — geometric particle effects for combat/pickup feedback
+    this.particleSystem = new ParticleSystem(
+      this.scene, this.eventBus, () => this.playerModel.mesh.position,
+    );
 
     // Lock-on system
     this.lockOnSystem = new LockOnSystem(
@@ -295,6 +302,7 @@ export class Game {
     this.combatSystem.update();
     this.staggerSystem.update(dt);
     this.pickupSystem.update(dt, playerPos);
+    this.particleSystem.update(dt);
     this.doorSystem.update(dt);
     this.playerStats.update(dt);
     this.uiManager.update();
@@ -422,6 +430,7 @@ export class Game {
     this.postProcessing.dispose();
     this.encounterManager.dispose();
     this.pickupSystem.dispose();
+    this.particleSystem.dispose();
     this.lockOnSystem.dispose();
     this.cameraShake.dispose();
     this.doorSystem.dispose();

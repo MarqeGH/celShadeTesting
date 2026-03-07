@@ -986,7 +986,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-038: Particle System (Geometric)
+## [DONE] T-038: Particle System (Geometric)
 
 | Field | Value |
 |-------|-------|
@@ -998,6 +998,19 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Create a geometric particle emitter. Particles are small triangles/squares/lines (not point sprites). Support: position, velocity, lifetime, size, color, rotation. Object-pooled. Presets: `enemyDeath` (burst of fragments outward), `playerHit` (red sparks), `shardCollect` (upward dissolve). Max 100 particles active. |
 | **Acceptance Criteria** | Particles emit at specified position with correct properties. Particles are geometric shapes (not circles). Particles are pooled (no allocation during gameplay). Each preset produces visually distinct effect. |
 | **Verification** | Trigger each preset, verify visual effect. Run for 60s with continuous particles, verify no frame drops. |
+
+**Implementation Notes:**
+- Created `src/rendering/ParticleSystem.ts` — geometric particle emitter with `ObjectPool<Particle>` (max 100 pooled particles, zero runtime allocation)
+- Three geometric shape types: tetrahedron (triangles), box (squares), thin box (lines) — all shared `BufferGeometry` instances
+- Three presets wired to EventBus events:
+  - `enemyDeath` (ENEMY_DIED) — 8-15 red tetrahedron fragments burst radially outward with fast spin
+  - `playerHit` (PLAYER_DAMAGED) — 5-8 red squares spray upward with gentle tumble
+  - `shardCollect` (SHARD_COLLECTED) — 4-6 golden line shapes rise with spiral rotation
+- Particles use cel-shading materials (`createCelMaterial`) with per-particle opacity fade (quadratic falloff) and scale shrink
+- Gravity applied to velocity each frame; rotation speed per axis
+- Integrated into `Game.ts`: constructed after PickupSystem, updated in game loop, disposed on cleanup
+- TypeScript compiles clean, Vite build succeeds, no console errors
+- **Files changed:** `src/rendering/ParticleSystem.ts` (new), `src/app/Game.ts` (modified)
 
 ---
 
