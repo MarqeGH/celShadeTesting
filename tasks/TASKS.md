@@ -451,7 +451,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-018: Hitbox/Hurtbox System
+## [DONE] T-018: Hitbox/Hurtbox System
 
 | Field | Value |
 |-------|-------|
@@ -463,6 +463,18 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Implement HitboxManager. Hitboxes are temporary collision volumes with: owner ID, attack data, attack instance ID, shape (sphere or AABB), active flag. Hurtboxes are persistent collision volumes on damageable entities. Each frame: iterate active hitboxes against all hurtboxes. On overlap: register hit (once per attack instance per target). Emit hit event with attacker, defender, attack data. |
 | **Acceptance Criteria** | Hitboxes can be created and activated/deactivated. Overlap detection works. Hits register once per attack instance per target (no double-hits). Hit events fire with correct data. |
 | **Verification** | Unit test: create hitbox overlapping hurtbox, verify single hit event. Create non-overlapping, verify no hit. |
+
+**Implementation Notes:**
+- Created `src/combat/HitboxManager.ts` — manages hitbox/hurtbox registration and per-frame overlap detection
+- `HitboxShape` discriminated union supports `sphere` (center + radius) and `aabb` (min + max) shapes
+- `Hitbox` interface: `id`, `ownerId`, `attackInstanceId`, `shape`, `active` flag, `AttackData` (damage, staggerDamage, knockback), `alreadyHit: Set<number>` for one-hit enforcement
+- `Hurtbox` interface: `entityId`, `shape` — persistent on damageable entities
+- `createHitbox()` returns handle for later `activateHitbox()` / `deactivateHitbox()` / `removeHitbox()`. `removeHitboxesByOwner()` for bulk cleanup
+- `registerHurtbox()` / `unregisterHurtbox()` for entity lifecycle management
+- `update()` iterates active hitboxes × hurtboxes: skips self-hits (ownerId === entityId), skips already-hit targets, delegates shape overlap to `CollisionSystem` functions (`testSphereVsSphere`, `testSphereVsAABB`, `testAABBvsAABB`)
+- Hit notification via `OnHitCallback` set with `setOnHitCallback()` — fires `HitResult` with attacker/defender IDs, attack data, hitbox ID, and attack instance ID
+- TypeScript compiles clean, Vite build succeeds
+- **Files changed:** `src/combat/HitboxManager.ts` (new)
 
 ---
 
