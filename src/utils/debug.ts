@@ -13,7 +13,7 @@ export interface DebugContext {
   playerStateMachine: PlayerStateMachine;
   playerModel: PlayerModel;
   playerStats: PlayerStats;
-  enemies: BaseEnemy[];
+  enemies: BaseEnemy[] | (() => BaseEnemy[]);
   hitboxManager: HitboxManager;
 }
 
@@ -80,7 +80,8 @@ export class DebugOverlay {
     const pos = this.ctx.playerModel.mesh.position;
     this.posEl.textContent = `${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)}`;
 
-    const aliveEnemies = this.ctx.enemies.filter((e) => !e.isDead()).length;
+    const enemyList = typeof this.ctx.enemies === 'function' ? this.ctx.enemies() : this.ctx.enemies;
+    const aliveEnemies = enemyList.filter((e) => !e.isDead()).length;
     this.enemyCountEl.textContent = String(aliveEnemies);
 
     const info = this.ctx.renderer.info;

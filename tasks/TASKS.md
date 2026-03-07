@@ -716,7 +716,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-028: Encounter Manager
+## [DONE] T-028: Encounter Manager
 
 | Field | Value |
 |-------|-------|
@@ -728,6 +728,19 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Implement EncounterManager. On room entry: load encounter data, spawn wave 0 enemies at specified spawn points via EnemyFactory. Track alive enemy count. When wave is cleared, wait `delay` ms, then spawn next wave. When all waves cleared, emit `ROOM_CLEARED` event. Support encounter data schema from DATA_SCHEMAS.md. |
 | **Acceptance Criteria** | Entering a room with encounter data spawns enemies at correct positions. Killing all enemies in a wave triggers next wave after delay. Clearing all waves emits ROOM_CLEARED. |
 | **Verification** | Load room + encounter, kill all enemies, verify ROOM_CLEARED event fires and doors unlock. |
+
+**Implementation Notes:**
+- Created `src/world/EncounterManager.ts` — manages wave-based enemy spawning for room encounters
+- `EncounterData`, `EncounterWave`, `SpawnEntry` interfaces match `DATA_SCHEMAS.md` schema
+- `startEncounter(encounter, roomId, spawnPoints, playerPosition)` initiates wave 0 (with optional delay)
+- `update(dt, playerPosition)` handles: enemy updates, dead-enemy cleanup (unregisters from CombatSystem), wave-clear detection, inter-wave delay timers, and next-wave spawning
+- Spawn point resolution supports all strategies: `"random"` (distributed across points with small offset to prevent stacking), `"nearest"` (sorted by distance to player), `"farthest"` (reverse-sorted), and numeric index (specific point)
+- CubeSentinel special handling: `setScene()` called automatically for projectile support
+- On all waves cleared: emits `ROOM_CLEARED` event via EventBus with room ID
+- Integrated into `Game.ts`: replaced hardcoded `spawnEnemies()` with `EncounterManager.startEncounter()` using a test encounter (3 triangle shards + 2 cube sentinels). EncounterManager owns enemy lifecycle (update, cleanup, dispose)
+- Updated `DebugContext.enemies` to accept a getter function `() => BaseEnemy[]` for live enemy count tracking across encounter restarts
+- TypeScript compiles clean, Vite build succeeds
+- **Files changed:** `src/world/EncounterManager.ts` (new), `src/app/Game.ts` (modified), `src/utils/debug.ts` (modified)
 
 ---
 

@@ -14,10 +14,9 @@ import { WeaponSystem } from '../combat/WeaponSystem';
 import { HitboxManager } from '../combat/HitboxManager';
 import { CombatSystem, CombatEntity, PLAYER_ENTITY_ID } from '../combat/CombatSystem';
 import { EventBus } from './EventBus';
-import { BaseEnemy } from '../enemies/BaseEnemy';
-import { EnemyFactory } from '../enemies/EnemyFactory';
 import '../enemies/TriangleShard'; // side-effect: registers in EnemyRegistry
-import { CubeSentinel } from '../enemies/CubeSentinel'; // side-effect: registers in EnemyRegistry
+import '../enemies/CubeSentinel'; // side-effect: registers in EnemyRegistry
+import { EncounterManager, EncounterData } from '../world/EncounterManager';
 import { HUD } from '../ui/HUD';
 import { UIManager } from '../ui/UIManager';
 import { DebugOverlay } from '../utils/debug';
@@ -45,7 +44,7 @@ export class Game {
   private hud: HUD;
   private uiManager: UIManager;
   private debugOverlay: DebugOverlay;
-  private enemies: BaseEnemy[] = [];
+  private encounterManager: EncounterManager;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -106,6 +105,11 @@ export class Game {
     };
     this.combatSystem.registerEntity(playerEntity);
 
+    // Encounter manager
+    this.encounterManager = new EncounterManager(
+      this.eventBus, this.hitboxManager, this.combatSystem, this.scene,
+    );
+
     // HUD and UI
     this.hud = new HUD(this.playerStats, this.eventBus);
     this.hud.attach(container);
@@ -118,7 +122,7 @@ export class Game {
       playerStateMachine: this.playerStateMachine,
       playerModel: this.playerModel,
       playerStats: this.playerStats,
-      enemies: this.enemies,
+      enemies: () => this.encounterManager.getEnemies(),
       hitboxManager: this.hitboxManager,
     });
     this.debugOverlay.attach(container);
@@ -127,14 +131,15 @@ export class Game {
     // Debug: instant kill — when any enemy takes damage, kill it immediately
     this.eventBus.on('ENEMY_DAMAGED', (data) => {
       if (!this.debugOverlay.instantKill) return;
-      const enemy = this.enemies.find((e) => e.stringId === data.enemyId);
+      const enemies = this.encounterManager.getEnemies();
+      const enemy = enemies.find((e) => e.stringId === data.enemyId);
       if (enemy && !enemy.isDead()) {
         enemy.takeDamage(enemy.getHp());
       }
     });
 
-    // Spawn test enemies
-    this.spawnEnemies();
+    // Start test encounter via EncounterManager
+    this.startTestEncounter();
 
     this.postProcessing = new PostProcessing(
       this.renderer.renderer,
@@ -155,44 +160,38 @@ export class Game {
     this.gameLoop.start();
   }
 
-  private spawnEnemies(): void {
-    const triangleSpawns = [
+  private startTestEncounter(): void {
+    // Load encounter data and start via EncounterManager
+    const testEncounter: EncounterData = {
+      id: 'test-arena',
+      difficulty: 3,
+      waves: [
+        {
+          delay: 0,
+          spawns: [
+            { enemyId: 'triangle-shard', count: 3, spawnPoint: 'random' },
+            { enemyId: 'cube-sentinel', count: 2, spawnPoint: 'farthest' },
+          ],
+        },
+      ],
+    };
+
+    const spawnPoints = [
       new THREE.Vector3(5, 0, 5),
       new THREE.Vector3(-5, 0, -5),
       new THREE.Vector3(6, 0, -4),
-    ];
-
-    for (const pos of triangleSpawns) {
-      EnemyFactory.create('triangle-shard', pos, this.eventBus, this.hitboxManager)
-        .then((enemy) => {
-          this.enemies.push(enemy);
-          this.scene.add(enemy.group);
-          this.combatSystem.registerEntity(enemy);
-        })
-        .catch((err) => {
-          console.error('[Game] Failed to spawn enemy:', err);
-        });
-    }
-
-    const cubeSpawns = [
       new THREE.Vector3(-7, 0, 6),
       new THREE.Vector3(7, 0, -6),
     ];
 
-    for (const pos of cubeSpawns) {
-      EnemyFactory.create('cube-sentinel', pos, this.eventBus, this.hitboxManager)
-        .then((enemy) => {
-          if (enemy instanceof CubeSentinel) {
-            enemy.setScene(this.scene);
-          }
-          this.enemies.push(enemy);
-          this.scene.add(enemy.group);
-          this.combatSystem.registerEntity(enemy);
-        })
-        .catch((err) => {
-          console.error('[Game] Failed to spawn enemy:', err);
-        });
-    }
+    this.encounterManager.startEncounter(
+      testEncounter,
+      'test-arena',
+      spawnPoints,
+      this.playerModel.mesh.position,
+    ).catch((err) => {
+      console.error('[Game] Failed to start test encounter:', err);
+    });
   }
 
   private addTestCube(): void {
@@ -208,16 +207,9 @@ export class Game {
     this.playerStateMachine.update(dt);
     this.playerController.resolveWallCollisions(this.testArena.wallColliders);
 
-    // Update enemies
+    // Update encounter (handles enemy updates + wave progression)
     const playerPos = this.playerModel.mesh.position;
-    for (let i = this.enemies.length - 1; i >= 0; i--) {
-      const enemy = this.enemies[i];
-      enemy.update(dt, playerPos);
-      if (enemy.isDead() && !enemy.isDying) {
-        this.combatSystem.unregisterEntity(enemy.entityId);
-        this.enemies.splice(i, 1);
-      }
-    }
+    this.encounterManager.update(dt, playerPos);
 
     this.combatSystem.update();
     this.playerStats.update(dt);
@@ -263,10 +255,7 @@ export class Game {
     this.playerModel.dispose();
     this.testArena.dispose();
     this.postProcessing.dispose();
-    for (const enemy of this.enemies) {
-      enemy.dispose();
-    }
-    this.enemies.length = 0;
+    this.encounterManager.dispose();
     this.uiManager.dispose();
     this.debugOverlay.dispose();
     this.hitboxManager.clear();
