@@ -774,7 +774,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-030: Zone Generator (Linear)
+## [DONE] T-030: Zone Generator (Linear)
 
 | Field | Value |
 |-------|-------|
@@ -786,6 +786,13 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Implement ZoneGenerator that creates a linear sequence of 5–6 rooms from a zone's room pool. Zone1Config defines: room pool (IDs), encounter pool (IDs), difficulty curve (array of difficulty values per room index). Generator selects rooms and encounters that match difficulty at each position. Output: ordered list of `{roomId, encounterId}` pairs. |
 | **Acceptance Criteria** | ZoneGenerator produces a valid room sequence for Zone 1. Difficulty increases through the sequence. Room and encounter selections are randomized within constraints. |
 | **Verification** | Generate multiple zone layouts, verify they differ and respect difficulty curve. |
+
+**Implementation Notes:**
+- Created `src/levels/ZoneRegistry.ts` — registry pattern (`Map<id, ZoneConfig>`) with `register()`, `get()`, `getAll()`, `has()`, `clear()`. Defines `ZoneConfig` interface with `roomPool` (room IDs + difficulty range + weight), `encounterPool` (encounter IDs + difficulty + weight), `difficultyCurve` (target difficulty per room index), and `difficultyTolerance`.
+- Created `src/levels/Zone1Config.ts` — "The Shattered Atrium" zone config. Room pool: 5 rooms (hall-straight, room-square, junction-T, balcony, boss-arena) with difficulty ranges matching Environment Bible. Encounter pool: 5 encounters from `data/encounters/zone1-encounters.json` (difficulty 1–6). Difficulty curve: [1, 2, 3, 5, 6, 7]. Auto-registers on import.
+- Created `src/world/ZoneGenerator.ts` — `generate(zoneId)` or `generateFromConfig(config)` produces a `ZoneLayout` with ordered `{roomId, encounterId, targetDifficulty, actualDifficulty}` pairs. Room count: random in [min, max]. Room selection: weighted random among rooms whose difficulty range contains the target. Encounter selection: weighted random among encounters within `difficultyTolerance` of target, with back-to-back repeat avoidance. Fallback to closest match if no candidates fit.
+- TypeScript compiles clean, Vite build succeeds
+- **Files changed:** `src/levels/ZoneRegistry.ts` (new), `src/levels/Zone1Config.ts` (new), `src/world/ZoneGenerator.ts` (new)
 
 ---
 
