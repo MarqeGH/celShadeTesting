@@ -2,6 +2,7 @@ import { StateMachine } from '../ai/StateMachine';
 import { AIState } from '../ai/AIState';
 import { InputManager } from '../app/InputManager';
 import { PlayerController } from './PlayerController';
+import { PlayerStats } from './PlayerStats';
 import { CameraController } from '../camera/CameraController';
 import { PlayerModel } from './PlayerModel';
 
@@ -10,6 +11,7 @@ import { PlayerModel } from './PlayerModel';
 export interface PlayerContext {
   input: InputManager;
   controller: PlayerController;
+  stats: PlayerStats;
   model: PlayerModel;
   camera: CameraController;
 }
@@ -27,11 +29,23 @@ function hasMovementInput(input: InputManager): boolean {
 
 // ── Helper: check action transitions common to idle/run ─────────
 
-function checkActionTransitions(input: InputManager): string | null {
-  if (input.justPressed('dodge')) return 'dodge';
-  if (input.justPressed('lightAttack')) return 'light_attack';
-  if (input.justPressed('heavyAttack')) return 'heavy_attack';
-  if (input.justPressed('heal')) return 'heal';
+function checkActionTransitions(input: InputManager, stats: PlayerStats): string | null {
+  if (input.justPressed('dodge') && stats.canPerformAction('dodge')) {
+    stats.drainStamina('dodge');
+    return 'dodge';
+  }
+  if (input.justPressed('lightAttack') && stats.canPerformAction('light_attack')) {
+    stats.drainStamina('light_attack');
+    return 'light_attack';
+  }
+  if (input.justPressed('heavyAttack') && stats.canPerformAction('heavy_attack')) {
+    stats.drainStamina('heavy_attack');
+    return 'heavy_attack';
+  }
+  if (input.justPressed('heal') && stats.canHeal()) {
+    stats.heal();
+    return 'heal';
+  }
   return null;
 }
 
@@ -43,7 +57,7 @@ class IdleState implements AIState<PlayerContext> {
   enter(_ctx: PlayerContext): void {}
 
   update(_dt: number, ctx: PlayerContext): string | null {
-    const action = checkActionTransitions(ctx.input);
+    const action = checkActionTransitions(ctx.input, ctx.stats);
     if (action) return action;
 
     if (hasMovementInput(ctx.input)) return 'run';
@@ -62,13 +76,13 @@ class RunState implements AIState<PlayerContext> {
   enter(_ctx: PlayerContext): void {}
 
   update(dt: number, ctx: PlayerContext): string | null {
-    const action = checkActionTransitions(ctx.input);
+    const action = checkActionTransitions(ctx.input, ctx.stats);
     if (action) return action;
 
     if (!hasMovementInput(ctx.input)) return 'idle';
 
     // Delegate actual movement to the controller
-    ctx.controller.update(dt);
+    ctx.controller.update(dt, ctx.stats);
 
     return null;
   }
@@ -124,10 +138,11 @@ export class PlayerStateMachine {
   constructor(
     input: InputManager,
     controller: PlayerController,
+    stats: PlayerStats,
     model: PlayerModel,
     camera: CameraController,
   ) {
-    const context: PlayerContext = { input, controller, model, camera };
+    const context: PlayerContext = { input, controller, stats, model, camera };
     this.fsm = new StateMachine<PlayerContext>(context);
 
     // Register all player states

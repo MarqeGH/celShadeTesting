@@ -4,6 +4,7 @@ import { GameLoop } from './GameLoop';
 import { InputManager } from './InputManager';
 import { PlayerModel } from '../player/PlayerModel';
 import { PlayerController } from '../player/PlayerController';
+import { PlayerStats } from '../player/PlayerStats';
 import { PlayerStateMachine } from '../player/PlayerStateMachine';
 import { CameraController } from '../camera/CameraController';
 
@@ -19,6 +20,7 @@ export class Game {
   private testCube: THREE.Mesh | null = null;
   private playerModel: PlayerModel;
   private playerController: PlayerController;
+  private playerStats: PlayerStats;
   private playerStateMachine: PlayerStateMachine;
 
   constructor(container: HTMLElement) {
@@ -39,8 +41,9 @@ export class Game {
     this.scene.add(this.playerModel.mesh);
 
     this.playerController = new PlayerController(this.input, this.cameraController, this.playerModel);
+    this.playerStats = new PlayerStats();
     this.playerStateMachine = new PlayerStateMachine(
-      this.input, this.playerController, this.playerModel, this.cameraController,
+      this.input, this.playerController, this.playerStats, this.playerModel, this.cameraController,
     );
 
     window.addEventListener('resize', this.onResize);
@@ -63,6 +66,7 @@ export class Game {
     this.input.update();
 
     this.playerStateMachine.update(dt);
+    this.playerStats.update(dt);
     this.playerModel.update(dt);
 
     // Update camera orbit and follow

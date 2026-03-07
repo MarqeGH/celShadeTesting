@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { InputManager } from '../app/InputManager';
 import { CameraController } from '../camera/CameraController';
 import { PlayerModel } from './PlayerModel';
+import { PlayerStats, SPRINT_STAMINA_PER_SEC } from './PlayerStats';
 
 /**
  * Handles camera-relative player movement and mesh rotation.
@@ -38,8 +39,9 @@ export class PlayerController {
   /**
    * Call once per fixed update. Reads input, moves the player mesh
    * in camera-relative space, and rotates to face the movement direction.
+   * When stats are provided, sprint drains stamina and exhaustion reduces speed.
    */
-  update(dt: number): void {
+  update(dt: number, stats?: PlayerStats): void {
     // Build input direction from WASD
     let inputX = 0;
     let inputZ = 0;
@@ -64,8 +66,20 @@ export class PlayerController {
     this.moveDir.y = 0;
     this.moveDir.normalize();
 
-    // Pick speed
-    const speed = this.input.isPressed('sprint') ? this.sprintSpeed : this.walkSpeed;
+    // Pick speed — exhaustion overrides, sprint drains stamina
+    const wantsSprint = this.input.isPressed('sprint');
+    let speed: number;
+
+    if (stats && stats.exhausted) {
+      speed = stats.exhaustedWalkSpeed;
+    } else if (wantsSprint && (!stats || stats.canSprint())) {
+      speed = this.sprintSpeed;
+      if (stats) {
+        stats.drainStaminaContinuous(SPRINT_STAMINA_PER_SEC, dt);
+      }
+    } else {
+      speed = this.walkSpeed;
+    }
 
     // Move the player mesh
     const mesh = this.playerModel.mesh;

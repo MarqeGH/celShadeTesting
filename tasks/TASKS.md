@@ -246,7 +246,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-010: Stamina System
+## [DONE] T-010: Stamina System
 
 | Field | Value |
 |-------|-------|
@@ -258,6 +258,19 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Implement PlayerStats class with HP (100), Stamina (100), heal charges (3). Stamina drains on actions (dodge: 20, light attack: 12, heavy attack: 25, sprint: 3/s). Stamina regens at 25/s after 400ms pause. Exhaustion state at 0 stamina: walk speed drops to 3 m/s, cannot dodge/attack/sprint until stamina reaches 20. Expose current values and events for UI. |
 | **Acceptance Criteria** | Stamina decreases on actions. Regen starts after 400ms delay. Exhaustion state triggers at 0. Exhaustion clears at 20. HP and heal charges track correctly. |
 | **Verification** | Unit test: drain stamina to 0, verify exhaustion flag. Wait 400ms, verify regen begins. |
+
+**Implementation Notes:**
+- Created `src/player/PlayerStats.ts` — tracks HP (100), Stamina (100), heal charges (3) with getters for all values
+- Stamina costs: dodge (20), light_attack (12), heavy_attack (25), sprint (3/s continuous)
+- `canPerformAction(action)` gates discrete actions; `canSprint()` gates sprinting
+- `drainStamina(action)` for discrete costs, `drainStaminaContinuous(rate, dt)` for sprint
+- Regen: 25/s after 400ms delay (`_regenTimer` resets on any drain). `update(dt)` handles regen tick
+- Exhaustion: triggers at stamina ≤ 0, clears at ≥ 20. When exhausted: walk speed forced to 3 m/s, dodge/attack/sprint blocked
+- Healing: 40 HP per charge, blocked at full HP or 0 charges
+- Integrated into `PlayerStateMachine` — `checkActionTransitions()` now gates on `stats.canPerformAction()` and drains stamina on transition
+- Integrated into `PlayerController.update(dt, stats?)` — sprint drains stamina continuously, exhaustion overrides speed
+- Wired into `Game.ts` — `PlayerStats` instance created and passed to state machine; `stats.update(dt)` called each frame
+- **Files changed:** `src/player/PlayerStats.ts` (new), `src/player/PlayerStateMachine.ts` (modified), `src/player/PlayerController.ts` (modified), `src/app/Game.ts` (modified)
 
 ---
 
