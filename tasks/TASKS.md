@@ -691,7 +691,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-027: Room Assembler (Basic)
+## [DONE] T-027: Room Assembler (Basic)
 
 | Field | Value |
 |-------|-------|
@@ -703,6 +703,16 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Implement RoomAssembler that reads a RoomModuleData JSON and constructs a Three.js scene graph from it. Create floor plane, walls, place spawn point markers (debug spheres), place exit door markers. Doors are initially locked (visual: red glow). RoomModule class holds reference to scene objects and provides `getSpawnPoints()`, `getExits()`, `unlockExits()`. |
 | **Acceptance Criteria** | Loading `atrium-room-square.json` produces a visible room with correct dimensions. Spawn points are accessible. Exits are visible and start locked. `unlockExits()` changes door visual to green. |
 | **Verification** | Load room data, verify room appears in scene with correct geometry. Call unlockExits(), verify visual change. |
+
+**Implementation Notes:**
+- Added `RoomModuleData`, `ExitPointData`, `Vec3Data`, `HazardPlacementData`, `PropPlacementData` interfaces to `src/world/RoomModule.ts` matching `DATA_SCHEMAS.md`
+- Created `RoomModule` class with `getSpawnPoints()`, `getPlayerEntry()`, `getExits()`, `unlockExits()`, and `dispose()`. Stores spawn points as `Vector3[]`, exits as `ExitDoor[]` with mesh references
+- `unlockExits()` sets `locked = false` on each exit and swaps cel shader `uBaseColor` from red (`#cc2222`) to green (`#22cc44`)
+- Created `src/world/RoomAssembler.ts` — `assemble(data)` builds floor (`PlaneGeometry` sized from `data.size`), 4 walls (`BoxGeometry` with AABB colliders), spawn point debug markers (yellow spheres), and exit door markers (`BoxGeometry` with red/green cel material based on locked state)
+- Doors rotate 90° for east/west exits so they face outward
+- Existing `TestArena` preserved — `Game.ts` unchanged
+- TypeScript compiles clean, Vite build succeeds
+- **Files changed:** `src/world/RoomModule.ts` (modified), `src/world/RoomAssembler.ts` (new)
 
 ---
 

@@ -12,6 +12,133 @@ export interface WallCollider {
   max: THREE.Vector3;
 }
 
+// --- Data interfaces matching DATA_SCHEMAS.md ---
+
+export interface Vec3Data {
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface ExitPointData {
+  position: Vec3Data;
+  direction: 'north' | 'south' | 'east' | 'west';
+  locked: boolean;
+}
+
+export interface HazardPlacementData {
+  type: string;
+  position: Vec3Data;
+  params: Record<string, number>;
+}
+
+export interface PropPlacementData {
+  type: string;
+  position: Vec3Data;
+  rotation: Vec3Data;
+  scale: number;
+}
+
+export interface RoomModuleData {
+  id: string;
+  zone: string;
+  size: { x: number; y: number; z: number };
+  geometry: string;
+  spawnPoints: Vec3Data[];
+  playerEntry: Vec3Data;
+  exits: ExitPointData[];
+  hazards: HazardPlacementData[];
+  props: PropPlacementData[];
+}
+
+// --- Exit door runtime object ---
+
+export interface ExitDoor {
+  position: THREE.Vector3;
+  direction: 'north' | 'south' | 'east' | 'west';
+  locked: boolean;
+  mesh: THREE.Mesh;
+}
+
+// --- RoomModule: runtime representation of an assembled room ---
+
+const DOOR_WIDTH = 2.0;
+const DOOR_HEIGHT = 2.5;
+const DOOR_DEPTH = 0.3;
+const LOCKED_COLOR = new THREE.Color(0xcc2222);
+const UNLOCKED_COLOR = new THREE.Color(0x22cc44);
+const SPAWN_MARKER_COLOR = new THREE.Color(0xffff00);
+const SPAWN_MARKER_RADIUS = 0.2;
+
+export class RoomModule {
+  readonly group: THREE.Group;
+  readonly wallColliders: WallCollider[] = [];
+  readonly data: RoomModuleData;
+
+  private spawnPoints: THREE.Vector3[] = [];
+  private exits: ExitDoor[] = [];
+  private spawnMarkers: THREE.Mesh[] = [];
+
+  constructor(data: RoomModuleData) {
+    this.data = data;
+    this.group = new THREE.Group();
+
+    // Store spawn points as Vector3
+    for (const sp of data.spawnPoints) {
+      this.spawnPoints.push(new THREE.Vector3(sp.x, sp.y, sp.z));
+    }
+  }
+
+  getSpawnPoints(): THREE.Vector3[] {
+    return this.spawnPoints;
+  }
+
+  getPlayerEntry(): THREE.Vector3 {
+    return new THREE.Vector3(
+      this.data.playerEntry.x,
+      this.data.playerEntry.y,
+      this.data.playerEntry.z,
+    );
+  }
+
+  getExits(): ExitDoor[] {
+    return this.exits;
+  }
+
+  addExit(exit: ExitDoor): void {
+    this.exits.push(exit);
+  }
+
+  addSpawnMarker(marker: THREE.Mesh): void {
+    this.spawnMarkers.push(marker);
+  }
+
+  unlockExits(): void {
+    for (const exit of this.exits) {
+      exit.locked = false;
+      const mat = exit.mesh.material;
+      if (mat instanceof THREE.ShaderMaterial && mat.uniforms['uBaseColor']) {
+        mat.uniforms['uBaseColor'].value.copy(UNLOCKED_COLOR);
+      }
+    }
+  }
+
+  dispose(): void {
+    this.group.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.geometry.dispose();
+        if (child.material instanceof THREE.Material) {
+          child.material.dispose();
+        }
+      }
+    });
+  }
+}
+
+export { DOOR_WIDTH, DOOR_HEIGHT, DOOR_DEPTH, LOCKED_COLOR, UNLOCKED_COLOR, SPAWN_MARKER_COLOR, SPAWN_MARKER_RADIUS };
+
+// --- TestArena: legacy test arena (kept for backward compatibility) ---
+
 export class TestArena {
   readonly group: THREE.Group;
   readonly wallColliders: WallCollider[] = [];
