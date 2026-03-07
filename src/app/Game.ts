@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Renderer } from '../rendering/Renderer';
+import { PostProcessing } from '../rendering/PostProcessing';
 import { GameLoop } from './GameLoop';
 import { InputManager } from './InputManager';
 import { PlayerModel } from '../player/PlayerModel';
@@ -18,6 +19,7 @@ export class Game {
 
   private container: HTMLElement;
   private gameLoop: GameLoop;
+  private postProcessing: PostProcessing;
   private testCube: THREE.Mesh | null = null;
   private playerModel: PlayerModel;
   private playerController: PlayerController;
@@ -47,6 +49,16 @@ export class Game {
       this.input, this.playerController, this.playerStats, this.playerModel, this.cameraController,
     );
 
+    this.postProcessing = new PostProcessing(
+      this.renderer.renderer,
+      this.scene,
+      this.camera,
+      container.clientWidth,
+      container.clientHeight,
+    );
+
+    // Toggle outline post-processing with 'O' key
+    window.addEventListener('keydown', this.onToggleOutline);
     window.addEventListener('resize', this.onResize);
 
     this.gameLoop = new GameLoop({
@@ -83,7 +95,7 @@ export class Game {
   }
 
   private render(_alpha: number): void {
-    this.renderer.render(this.scene, this.camera);
+    this.postProcessing.render();
   }
 
   private onResize = (): void => {
@@ -92,12 +104,22 @@ export class Game {
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
     this.renderer.resize(width, height);
+    this.postProcessing.resize(width, height);
+  };
+
+  private onToggleOutline = (e: KeyboardEvent): void => {
+    if (e.code === 'KeyO') {
+      this.postProcessing.enabled = !this.postProcessing.enabled;
+      console.log(`Outline post-processing: ${this.postProcessing.enabled ? 'ON' : 'OFF'}`);
+    }
   };
 
   dispose(): void {
     this.gameLoop.stop();
     this.input.dispose();
     this.playerModel.dispose();
+    this.postProcessing.dispose();
+    window.removeEventListener('keydown', this.onToggleOutline);
     window.removeEventListener('resize', this.onResize);
   }
 }

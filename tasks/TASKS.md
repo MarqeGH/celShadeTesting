@@ -297,7 +297,7 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 
 ---
 
-## T-012: Outline Post-Processing
+## [DONE] T-012: Outline Post-Processing
 
 | Field | Value |
 |-------|-------|
@@ -309,6 +309,16 @@ When a task spans two domains (e.g., gameplay + rendering), the Work Type reflec
 | **Description** | Add an outline pass using Three.js EffectComposer. Use edge detection on depth/normal buffer to draw black outlines on all geometry. Outline width: 2px (configurable). Set up EffectComposer pipeline: render pass → outline pass → output. |
 | **Acceptance Criteria** | All objects have visible black outlines. Outlines follow object silhouettes. Outline width is consistent regardless of distance (screen-space). Performance impact < 2ms per frame. |
 | **Verification** | Visual inspection. Toggle outline pass on/off via debug key to confirm it's working. |
+
+**Implementation Notes:**
+- Created `src/shaders/outlineVertex.ts` — fullscreen quad vertex shader passing UVs
+- Created `src/shaders/outlineFragment.ts` — Sobel-like edge detection on depth (linearized, normalized by center depth for distance-independence) and normals (dot-product difference). Thresholds: depth 0.15, normal 0.5. Hard `step()` produces clean black outlines
+- Created `src/rendering/PostProcessing.ts` — EffectComposer pipeline: RenderPass → custom ShaderPass (outline) → OutputPass. Renders depth and normals to separate `WebGLRenderTarget`s each frame using `scene.overrideMaterial` with `MeshDepthMaterial` and `MeshNormalMaterial`. Texture refs set after ShaderPass construction to avoid Three.js uniform clone issues with render target textures
+- Outline width: 2px (configurable via `setOutlineWidth()`). Screen-space consistent regardless of object distance
+- Toggle with 'O' key: logs state to console, falls back to direct `renderer.render()` when disabled
+- Integrated into `Game.ts`: PostProcessing created after all scene objects, `render()` delegates to PostProcessing, resize updates PostProcessing, dispose cleans up
+- TypeScript compiles clean, no console errors
+- **Files changed:** `src/shaders/outlineVertex.ts` (new), `src/shaders/outlineFragment.ts` (new), `src/rendering/PostProcessing.ts` (new), `src/app/Game.ts` (modified)
 
 ---
 
