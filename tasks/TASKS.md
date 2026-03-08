@@ -313,7 +313,7 @@
 
 ---
 
-### T-056: Room Module — atrium-hall-straight
+### [DONE] T-056: Room Module — atrium-hall-straight
 
 | Field | Value |
 |-------|-------|
@@ -324,6 +324,8 @@
 | **Description** | Create JSON for the tutorial corridor room. 20m×8m floor, 3m walls. 2 spawn points at mid-corridor flanks. Player entry at south. Single exit at north. 2 decorative column props at 1/3 and 2/3 length. No hazards. Zone: "shattered-atrium". This is the opening room for Zone 1 runs. |
 | **Acceptance Criteria** | JSON conforms to RoomModuleData schema. RoomAssembler builds it without errors. Spawn points are reachable. |
 | **Verification** | Load via AssetLoader + RoomAssembler. Walk through room. Verify dimensions and spawn positions. |
+
+**Implementation note**: Created `data/rooms/atrium-hall-straight.json` — 8×3×20 corridor (x=width, z=length). 2 spawn points at mid-corridor flanks (x=±3), player entry at south (z=-9.5), single north exit (z=9.5, locked). 2 pillar-cracked props at ~1/3 and 2/3 length. No hazards. Already registered in Zone1Config (line 20).
 
 ---
 

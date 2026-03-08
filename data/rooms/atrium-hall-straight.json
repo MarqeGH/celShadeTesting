@@ -1,0 +1,19 @@
+{
+  "id": "atrium-hall-straight",
+  "zone": "shattered-atrium",
+  "size": { "x": 8, "y": 3, "z": 20 },
+  "geometry": "prefab:atrium-hall-straight",
+  "spawnPoints": [
+    { "x": -3, "y": 0, "z": 0 },
+    { "x": 3, "y": 0, "z": 0 }
+  ],
+  "playerEntry": { "x": 0, "y": 0, "z": -9.5 },
+  "exits": [
+    { "position": { "x": 0, "y": 0, "z": 9.5 }, "direction": "north", "locked": true }
+  ],
+  "hazards": [],
+  "props": [
+    { "type": "pillar-cracked", "position": { "x": -2.5, "y": 0, "z": -3.3 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "scale": 1.0 },
+    { "type": "pillar-cracked", "position": { "x": 2.5, "y": 0, "z": 3.3 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "scale": 1.0 }
+  ]
+}
