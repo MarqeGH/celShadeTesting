@@ -1,6 +1,6 @@
 # Task Registry
 
-> 57 of 86 tasks completed (T-001–T-057 + T-BUG-001 done). Phase 6 tasks T-058–T-085 remain.
+> 58 of 86 tasks completed (T-001–T-058 + T-BUG-001 done). Phase 6 tasks T-059–T-085 remain.
 > Completed task details are archived in `tasks/completed/`:
 > - [Core Infrastructure](completed/core-infrastructure.md) — T-001, T-003, T-004, T-005, T-014, T-024
 > - [Player & Combat](completed/player-combat.md) — T-002, T-006–T-010, T-015–T-019, T-031, T-039–T-041
@@ -345,7 +345,7 @@
 
 ---
 
-### T-058: Room Module — atrium-boss-arena
+### [DONE] T-058: Room Module — atrium-boss-arena
 
 | Field | Value |
 |-------|-------|
@@ -356,6 +356,8 @@
 | **Description** | Create JSON for the Zone 1 boss arena. 20m×20m open floor, 3m walls. 4 corner pillars (props). Single spawn point at room center. Player entry at south. No exits (boss arena — game handles zone transition on boss death). No hazards. Zone: "shattered-atrium". |
 | **Acceptance Criteria** | JSON conforms to schema. Large open room with 4 pillar props. Spawn point centered. |
 | **Verification** | Load room. Verify dimensions suit boss combat (enough space for dodge rolls and boss attacks). |
+
+**Implementation note**: Created `data/rooms/atrium-boss-arena.json` — 20×20×3 arena with single center spawn, south player entry at (0, 0, -9.5), no exits, no hazards, 4 `pillar-cracked` props at corners (±8, 0, ±8). Follows existing room module schema conventions.
 
 ---
 

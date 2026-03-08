@@ -1,0 +1,18 @@
+{
+  "id": "atrium-boss-arena",
+  "zone": "shattered-atrium",
+  "size": { "x": 20, "y": 3, "z": 20 },
+  "geometry": "prefab:atrium-boss-arena",
+  "spawnPoints": [
+    { "x": 0, "y": 0, "z": 0 }
+  ],
+  "playerEntry": { "x": 0, "y": 0, "z": -9.5 },
+  "exits": [],
+  "hazards": [],
+  "props": [
+    { "type": "pillar-cracked", "position": { "x": -8, "y": 0, "z": -8 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "scale": 1.0 },
+    { "type": "pillar-cracked", "position": { "x": 8, "y": 0, "z": -8 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "scale": 1.0 },
+    { "type": "pillar-cracked", "position": { "x": -8, "y": 0, "z": 8 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "scale": 1.0 },
+    { "type": "pillar-cracked", "position": { "x": 8, "y": 0, "z": 8 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "scale": 1.0 }
+  ]
+}
