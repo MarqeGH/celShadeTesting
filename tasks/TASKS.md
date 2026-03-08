@@ -1,6 +1,6 @@
 # Task Registry
 
-> 41 of 46 tasks completed. Remaining work below.
+> 42 of 46 tasks completed. Remaining work below.
 > Completed task details are archived in `tasks/completed/`:
 > - [Core Infrastructure](completed/core-infrastructure.md) — T-001, T-003, T-004, T-005, T-014, T-024
 > - [Player & Combat](completed/player-combat.md) — T-002, T-006–T-010, T-015–T-019, T-031, T-039–T-041
@@ -12,7 +12,7 @@
 
 ## Remaining Tasks
 
-### T-042: Save System
+### [DONE] T-042: Save System
 
 | Field | Value |
 |-------|-------|
@@ -22,6 +22,8 @@
 | **Target Files** | `src/save/SaveManager.ts`, `src/save/SaveSchema.ts` |
 | **Description** | Implement localStorage-based save system. SaveSchema defines shape: `{ version: number, metaCurrency: number, unlocks: string[], settings: {...}, bestRun: {...} }`. SaveManager provides: `save(data)`, `load(): SaveData`, `reset()`. Version field enables future migrations. Auto-save on run end. Load on game start. |
 | **Acceptance Criteria** | Data persists across browser sessions. Schema is validated on load. Corrupted data is handled gracefully (reset to defaults). Version migration path exists. |
+
+**Implementation note**: `SaveSchema.ts` defines `SaveData` with version, metaCurrency, unlocks, settings (volumes + cameraSensitivity), and bestRun (rooms/enemies/shards). `SaveManager.ts` provides save/load/reset with localStorage, JSON validation, version migration path, auto-save on `RUN_ENDED` (awards 50% shards as meta-currency). Wired into `Game.ts` after EventBus construction. Corrupted/missing data resets to defaults gracefully.
 
 ---
 

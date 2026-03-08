@@ -32,6 +32,7 @@ import { PickupSystem } from '../interactions/PickupSystem';
 import { MenuSystem } from '../ui/MenuSystem';
 import { RunState } from '../progression/RunState';
 import { ParticleSystem } from '../rendering/ParticleSystem';
+import { SaveManager } from '../save/SaveManager';
 
 export class Game {
   readonly scene: THREE.Scene;
@@ -68,6 +69,7 @@ export class Game {
   private menuSystem: MenuSystem;
   private particleSystem: ParticleSystem;
   private runState: RunState;
+  private saveManager: SaveManager;
   private currentRoom: RoomModule | null = null;
 
   constructor(container: HTMLElement) {
@@ -106,6 +108,7 @@ export class Game {
 
     // Combat system: EventBus → HitboxManager → StaggerSystem → CombatSystem
     this.eventBus = new EventBus();
+    this.saveManager = new SaveManager(this.eventBus);
     this.hitboxManager = new HitboxManager();
     this.staggerSystem = new StaggerSystem();
     this.combatSystem = new CombatSystem(this.hitboxManager, this.eventBus, this.staggerSystem);
@@ -451,6 +454,7 @@ export class Game {
     }
     this.damageNumbers.dispose();
     this.menuSystem.dispose();
+    this.saveManager.dispose();
     this.runState.dispose();
     this.uiManager.dispose();
     this.debugOverlay.dispose();
