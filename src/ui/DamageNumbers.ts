@@ -10,6 +10,7 @@
 
 import * as THREE from 'three';
 import { EventBus } from '../app/EventBus';
+import { ObjectPool } from '../engine/ObjectPool';
 
 // ── Constants ────────────────────────────────────────────────────
 
@@ -63,19 +64,12 @@ function injectDmgStyles(): void {
   dmgStylesInjected = true;
 }
 
-// ── Pooled damage number element ────────────────────────────────
-
-interface PooledElement {
-  el: HTMLDivElement;
-  active: boolean;
-}
-
 // ── DamageNumbers class ─────────────────────────────────────────
 
 export class DamageNumbers {
   private container: HTMLElement;
   private camera: THREE.PerspectiveCamera;
-  private pool: PooledElement[] = [];
+  private pool: ObjectPool<HTMLDivElement>;
 
   // Reusable Three.js vector for projection
   private _projVec = new THREE.Vector3();
@@ -95,13 +89,20 @@ export class DamageNumbers {
 
     injectDmgStyles();
 
-    // Pre-warm pool
-    for (let i = 0; i < POOL_SIZE; i++) {
-      const el = document.createElement('div');
-      el.className = 'dmg-number';
-      container.appendChild(el);
-      this.pool.push({ el, active: false });
-    }
+    // Pre-warm DOM element pool
+    this.pool = new ObjectPool<HTMLDivElement>(
+      () => {
+        const el = document.createElement('div');
+        el.className = 'dmg-number';
+        this.container.appendChild(el);
+        return el;
+      },
+      (el) => {
+        el.classList.remove('active');
+        el.textContent = '';
+      },
+      POOL_SIZE,
+    );
 
     // Subscribe to damage events
     this.onEnemyDamaged = (data) => {
@@ -140,10 +141,7 @@ export class DamageNumbers {
     const offsetX = (Math.random() - 0.5) * 30;
 
     // Acquire a pooled element
-    const item = this.acquire();
-    if (!item) return;
-
-    const { el } = item;
+    const el = this.pool.acquire();
 
     // Set color based on type
     if (type === 'player') {
@@ -156,39 +154,20 @@ export class DamageNumbers {
     el.style.left = `${screenX + offsetX}px`;
     el.style.top = `${screenY}px`;
 
-    // Restart animation: remove class, force reflow, add class
-    el.classList.remove('active');
-    void el.offsetWidth; // force reflow
+    // Force reflow then start animation
+    void el.offsetWidth;
     el.classList.add('active');
 
     // Release back to pool after animation
     setTimeout(() => {
-      el.classList.remove('active');
-      item.active = false;
+      this.pool.release(el);
     }, FLOAT_DURATION_MS);
-  }
-
-  private acquire(): PooledElement | null {
-    // Find an inactive element
-    for (const item of this.pool) {
-      if (!item.active) {
-        item.active = true;
-        return item;
-      }
-    }
-    // All in use — recycle oldest (first in array)
-    const oldest = this.pool[0];
-    oldest.el.classList.remove('active');
-    oldest.active = true;
-    return oldest;
   }
 
   dispose(): void {
     this.eventBus.off('ENEMY_DAMAGED', this.onEnemyDamaged);
     this.eventBus.off('PLAYER_DAMAGED', this.onPlayerDamaged);
-    for (const item of this.pool) {
-      item.el.remove();
-    }
-    this.pool.length = 0;
+    this.pool.forEachActive((el) => el.remove());
+    this.pool.releaseAll();
   }
 }

@@ -69,4 +69,11 @@ export class ObjectPool<T> {
   get availableCount(): number {
     return this.pool.length;
   }
+
+  /** Pre-warm the pool by creating additional items upfront. */
+  preWarm(count: number): void {
+    for (let i = 0; i < count; i++) {
+      this.pool.push(this.factory());
+    }
+  }
 }

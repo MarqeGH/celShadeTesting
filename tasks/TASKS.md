@@ -1,6 +1,6 @@
 # Task Registry
 
-> 42 of 46 tasks completed. Remaining work below.
+> 43 of 46 tasks completed. Remaining work below.
 > Completed task details are archived in `tasks/completed/`:
 > - [Core Infrastructure](completed/core-infrastructure.md) — T-001, T-003, T-004, T-005, T-014, T-024
 > - [Player & Combat](completed/player-combat.md) — T-002, T-006–T-010, T-015–T-019, T-031, T-039–T-041
@@ -27,7 +27,7 @@
 
 ---
 
-### T-043: Object Pool (Enhancement)
+### [DONE] T-043: Object Pool (Enhancement)
 
 | Field | Value |
 |-------|-------|
@@ -37,6 +37,8 @@
 | **Target Files** | `src/engine/ObjectPool.ts` |
 | **Description** | Enhance the existing ObjectPool with `preWarm(count)` for upfront allocation at scene start. Currently used by CubeSentinel projectiles and ParticleSystem. Extend usage to damage numbers and pickups. |
 | **Acceptance Criteria** | Pre-warm creates specified count upfront. All poolable systems use ObjectPool. No runtime allocation during combat. |
+
+**Implementation note**: Added `preWarm(count)` method to `ObjectPool`. Converted `PickupSystem` to pool `THREE.Mesh` instances (pre-warms 30, acquires on spawn, releases on collect/despawn). Converted `DamageNumbers` from manual DOM pooling to `ObjectPool<HTMLDivElement>` (pre-warms 20, releases after animation timeout). All poolable combat systems now use the shared ObjectPool class with zero runtime allocation during combat.
 
 ---
 

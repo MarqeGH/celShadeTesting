@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { EventBus } from '../app/EventBus';
+import { ObjectPool } from '../engine/ObjectPool';
 import { EnemyFactory } from '../enemies/EnemyFactory';
 import { createCelMaterial } from '../rendering/CelShadingPipeline';
 import type { Interactable } from './Interactable';
@@ -18,6 +19,7 @@ const LIFETIME = 30; // seconds before pickup despawns
 const MAGNET_RADIUS = 3;
 const MAGNET_RADIUS_SQ = MAGNET_RADIUS * MAGNET_RADIUS;
 const MAGNET_SPEED = 8;
+const MESH_POOL_SIZE = 30;
 
 // ── Shard pickup ─────────────────────────────────────────────────
 
@@ -42,6 +44,7 @@ export class PickupSystem {
   private totalShards = 0;
   private sharedGeometry: THREE.OctahedronGeometry;
   private sharedMaterial: THREE.ShaderMaterial;
+  private meshPool: ObjectPool<THREE.Mesh>;
 
   private onEnemyDied: (data: { enemyId: string; position: { x: number; y: number; z: number } }) => void;
 
@@ -52,6 +55,17 @@ export class PickupSystem {
     // Shared geometry/material for all shard pickups
     this.sharedGeometry = new THREE.OctahedronGeometry(PICKUP_SCALE, 0);
     this.sharedMaterial = createCelMaterial(SHARD_COLOR);
+
+    // Mesh pool: pre-warm to avoid runtime allocation during combat
+    this.meshPool = new ObjectPool<THREE.Mesh>(
+      () => new THREE.Mesh(this.sharedGeometry, this.sharedMaterial),
+      (mesh) => {
+        mesh.position.set(0, 0, 0);
+        mesh.rotation.set(0, 0, 0);
+        mesh.visible = false;
+      },
+      MESH_POOL_SIZE,
+    );
 
     // Listen for enemy deaths
     this.onEnemyDied = (data) => this.spawnShards(data.enemyId, data.position);
@@ -120,6 +134,7 @@ export class PickupSystem {
     for (const pickup of this.pickups) {
       this.scene.remove(pickup.mesh);
     }
+    this.meshPool.releaseAll();
     this.pickups.length = 0;
 
     this.sharedGeometry.dispose();
@@ -156,7 +171,7 @@ export class PickupSystem {
     position: { x: number; y: number; z: number },
     value: number,
   ): void {
-    const mesh = new THREE.Mesh(this.sharedGeometry, this.sharedMaterial);
+    const mesh = this.meshPool.acquire();
 
     // Scatter slightly around the death position
     mesh.position.set(
@@ -172,6 +187,7 @@ export class PickupSystem {
       Math.random() * Math.PI * 2,
     );
 
+    mesh.visible = true;
     this.scene.add(mesh);
 
     const pickup: ShardPickup = {
@@ -184,7 +200,10 @@ export class PickupSystem {
       getPosition: () => mesh.position,
       isActive: () => !pickup.collected,
       update: () => {},
-      dispose: () => this.scene.remove(mesh),
+      dispose: () => {
+        this.scene.remove(mesh);
+        this.meshPool.release(mesh);
+      },
     };
 
     this.pickups.push(pickup);
@@ -208,6 +227,7 @@ export class PickupSystem {
   private removePickup(index: number): void {
     const pickup = this.pickups[index];
     this.scene.remove(pickup.mesh);
+    this.meshPool.release(pickup.mesh);
     this.pickups.splice(index, 1);
   }
 }
