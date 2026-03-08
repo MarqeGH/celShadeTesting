@@ -6,7 +6,7 @@
 
 import { HUD } from './HUD';
 
-export type UIState = 'title' | 'gameplay' | 'menu' | 'hidden';
+export type UIState = 'title' | 'gameplay' | 'menu' | 'paused' | 'hidden';
 
 export class UIManager {
   private state: UIState = 'gameplay';
@@ -19,6 +19,8 @@ export class UIManager {
 
     switch (state) {
       case 'gameplay':
+      case 'paused':
+        // Keep HUD visible during pause (shows behind overlay)
         this.hud.show();
         break;
       case 'title':

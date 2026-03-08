@@ -35,6 +35,7 @@ import { AssetLoader } from '../engine/AssetLoader';
 import { PickupSystem } from '../interactions/PickupSystem';
 import { WeaponPickup } from '../interactions/WeaponPickup';
 import { MenuSystem } from '../ui/MenuSystem';
+import { PauseMenu } from '../ui/PauseMenu';
 import { TitleScreen } from '../ui/TitleScreen';
 import { RunState } from '../progression/RunState';
 import { ParticleSystem } from '../rendering/ParticleSystem';
@@ -77,6 +78,7 @@ export class Game {
   private pickupSystem: PickupSystem;
   private weaponPickup: WeaponPickup;
   private menuSystem: MenuSystem;
+  private pauseMenu: PauseMenu;
   private titleScreen: TitleScreen;
   private particleSystem: ParticleSystem;
   private runState: RunState;
@@ -220,8 +222,19 @@ export class Game {
       () => this.handleReturnToHub(),
     );
 
-    // Hide HUD when player dies
+    // Pause menu
+    this.pauseMenu = new PauseMenu(
+      container,
+      () => this.resumeGame(),
+      () => this.handleQuitFromPause(),
+    );
+
+    // Hide HUD when player dies (and unpause if paused)
     this.eventBus.on('PLAYER_DIED', () => {
+      if (this.uiManager.getState() === 'paused') {
+        this.pauseMenu.hide();
+        this.gameLoop.resume();
+      }
       this.uiManager.setState('menu');
     });
 
@@ -286,6 +299,7 @@ export class Game {
 
     // Toggle outline post-processing with 'O' key
     window.addEventListener('keydown', this.onToggleOutline);
+    window.addEventListener('keydown', this.onEscapeKey);
     window.addEventListener('resize', this.onResize);
 
     this.gameLoop = new GameLoop({
@@ -538,6 +552,38 @@ export class Game {
     });
   }
 
+  // ── Pause toggle (Escape key) ─────────────────────────────────────
+
+  private onEscapeKey = (e: KeyboardEvent): void => {
+    if (e.code !== 'Escape') return;
+    const state = this.uiManager.getState();
+    if (state === 'gameplay') {
+      this.pauseGame();
+    } else if (state === 'paused') {
+      this.resumeGame();
+    }
+  };
+
+  private pauseGame(): void {
+    this.gameLoop.pause();
+    this.uiManager.setState('paused');
+    this.pauseMenu.show();
+  }
+
+  private resumeGame(): void {
+    this.pauseMenu.hide();
+    this.uiManager.setState('gameplay');
+    this.gameLoop.resume();
+  }
+
+  /** Quit Run from pause menu — ends the run and restarts. */
+  private handleQuitFromPause(): void {
+    this.pauseMenu.hide();
+    this.gameLoop.resume();
+    this.runState.endRun(false);
+    this.handleReturnToHub();
+  }
+
   private onToggleOutline = (e: KeyboardEvent): void => {
     if (e.code === 'KeyO') {
       this.postProcessing.enabled = !this.postProcessing.enabled;
@@ -566,6 +612,7 @@ export class Game {
     this.damageNumbers.dispose();
     this.titleScreen.dispose();
     this.menuSystem.dispose();
+    this.pauseMenu.dispose();
     this.saveManager.dispose();
     this.runState.dispose();
     this.uiManager.dispose();
@@ -574,6 +621,7 @@ export class Game {
     this.staggerSystem.clear();
     this.eventBus.clear();
     window.removeEventListener('keydown', this.onToggleOutline);
+    window.removeEventListener('keydown', this.onEscapeKey);
     window.removeEventListener('resize', this.onResize);
   }
 }

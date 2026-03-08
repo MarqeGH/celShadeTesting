@@ -1,6 +1,6 @@
 # Task Registry
 
-> 61 of 86 tasks completed (T-001–T-062 + T-BUG-001 done). Phase 6 tasks T-063–T-085 remain.
+> 62 of 86 tasks completed (T-001–T-063 + T-BUG-001 done). Phase 6 tasks T-064–T-085 remain.
 > Completed task details are archived in `tasks/completed/`:
 > - [Core Infrastructure](completed/core-infrastructure.md) — T-001, T-003, T-004, T-005, T-014, T-024
 > - [Player & Combat](completed/player-combat.md) — T-002, T-006–T-010, T-015–T-019, T-031, T-039–T-041
@@ -424,7 +424,7 @@
 
 ---
 
-### T-063: Pause Menu
+### [DONE] T-063: Pause Menu
 
 | Field | Value |
 |-------|-------|
@@ -435,6 +435,8 @@
 | **Description** | Escape key toggles pause. PauseMenu: semi-transparent dark overlay with "PAUSED" title, buttons: "Resume", "Settings" (placeholder), "Quit Run" (ends run, returns to hub/restart). GameLoop.pause()/resume() stops update loop but keeps rendering at low rate. InputManager ignores gameplay input while paused. UIManager adds `paused` state. Escape while paused resumes. |
 | **Acceptance Criteria** | Escape pauses game and shows overlay. Game loop stops. Resume returns to gameplay. Quit Run ends the run. |
 | **Verification** | During combat, press Escape. Verify enemies freeze. Press Resume. Verify combat resumes. |
+
+**Implementation note**: Created `PauseMenu.ts` with semi-transparent overlay (z-index 90), "PAUSED" title, Resume/Settings(disabled)/Quit Run buttons. Added `'paused'` UIState that keeps HUD visible behind overlay. GameLoop gained `pause()`/`resume()` — paused state skips updates and throttles rendering to ~15fps. Escape key toggle handled via keydown listener (works independently of game loop). Quit Run ends the run via `runState.endRun(false)` then restarts.
 
 ---
 
