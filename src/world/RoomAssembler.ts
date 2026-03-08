@@ -12,6 +12,7 @@ import {
   type RoomModuleData,
   type ExitDoor,
 } from './RoomModule';
+import type { HazardSystem } from './HazardSystem';
 
 const WALL_THICKNESS = 0.4;
 const FLOOR_COLOR = new THREE.Color(0x3a3a3a);
@@ -26,13 +27,16 @@ export class RoomAssembler {
   /**
    * Build a RoomModule from data. Creates floor, walls, spawn markers, and doors.
    */
-  assemble(data: RoomModuleData): RoomModule {
+  assemble(data: RoomModuleData, hazardSystem?: HazardSystem): RoomModule {
     const room = new RoomModule(data);
 
     this.buildFloor(room, data);
     this.buildWalls(room, data);
     this.buildSpawnMarkers(room, data);
     this.buildExitDoors(room, data);
+    if (hazardSystem && data.hazards) {
+      this.buildHazards(data, hazardSystem);
+    }
 
     return room;
   }
@@ -120,6 +124,12 @@ export class RoomAssembler {
         mesh: doorMesh,
       };
       room.addExit(exit);
+    }
+  }
+
+  private buildHazards(data: RoomModuleData, hazardSystem: HazardSystem): void {
+    for (const h of data.hazards) {
+      hazardSystem.spawn(h.type, h.position, h.params);
     }
   }
 }

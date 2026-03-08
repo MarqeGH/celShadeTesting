@@ -39,6 +39,7 @@ import { RunState } from '../progression/RunState';
 import { ParticleSystem } from '../rendering/ParticleSystem';
 import { SaveManager } from '../save/SaveManager';
 import { ZoneGenerator, type ZoneLayout } from '../world/ZoneGenerator';
+import { HazardSystem } from '../world/HazardSystem';
 import '../levels/Zone1Config'; // side-effect: registers zone config in ZoneRegistry
 
 export class Game {
@@ -79,6 +80,7 @@ export class Game {
   private runState: RunState;
   private saveManager: SaveManager;
   private zoneGenerator: ZoneGenerator;
+  private hazardSystem: HazardSystem;
   private currentLayout: ZoneLayout | null = null;
   private encounterDataCache: EncounterData[] = [];
   private currentRoom: RoomModule | null = null;
@@ -248,6 +250,7 @@ export class Game {
     this.zoneGenerator = new ZoneGenerator();
     this.assetLoader = new AssetLoader();
     this.roomAssembler = new RoomAssembler();
+    this.hazardSystem = new HazardSystem(this.scene, this.eventBus, this.playerStats);
     this.doorSystem = new DoorSystem(this.eventBus, this.input, container);
     this.doorSystem.setPlayerPosition(this.playerModel.mesh.position);
     this.doorSystem.setTransitionCallback(async (exit) => {
@@ -326,6 +329,7 @@ export class Game {
     }
 
     // Unload current room if exists
+    this.hazardSystem.clear();
     if (this.currentRoom) {
       this.scene.remove(this.currentRoom.group);
       this.currentRoom.dispose();
@@ -350,8 +354,8 @@ export class Game {
       );
     }
 
-    // Assemble and add to scene
-    const room = this.roomAssembler.assemble(roomData);
+    // Assemble and add to scene (pass hazardSystem so hazards are spawned)
+    const room = this.roomAssembler.assemble(roomData, this.hazardSystem);
     this.scene.add(room.group);
     this.currentRoom = room;
 
@@ -420,6 +424,7 @@ export class Game {
 
     this.combatSystem.update();
     this.staggerSystem.update(dt);
+    this.hazardSystem.update(dt, playerPos);
     this.pickupSystem.update(dt, playerPos);
     this.weaponPickup.update(dt, playerPos);
     this.particleSystem.update(dt);
@@ -506,8 +511,9 @@ export class Game {
     this.playerStateMachine.fsm.setState('idle');
     this.playerModel.mesh.position.set(0, 0, 0);
 
-    // Clear current encounter
+    // Clear current encounter and hazards
     this.encounterManager.dispose();
+    this.hazardSystem.clear();
 
     // Restore HUD
     this.uiManager.setState('gameplay');
@@ -532,6 +538,7 @@ export class Game {
     this.testArena.dispose();
     this.postProcessing.dispose();
     this.encounterManager.dispose();
+    this.hazardSystem.dispose();
     this.pickupSystem.dispose();
     this.weaponPickup.dispose();
     this.particleSystem.dispose();

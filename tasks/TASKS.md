@@ -1,6 +1,6 @@
 # Task Registry
 
-> 59 of 86 tasks completed (T-001–T-060 + T-BUG-001 done). Phase 6 tasks T-061–T-085 remain.
+> 60 of 86 tasks completed (T-001–T-061 + T-BUG-001 done). Phase 6 tasks T-062–T-085 remain.
 > Completed task details are archived in `tasks/completed/`:
 > - [Core Infrastructure](completed/core-infrastructure.md) — T-001, T-003, T-004, T-005, T-014, T-024
 > - [Player & Combat](completed/player-combat.md) — T-002, T-006–T-010, T-015–T-019, T-031, T-039–T-041
@@ -393,7 +393,7 @@
 
 ---
 
-### T-061: Environment Hazard System
+### [DONE] T-061: Environment Hazard System
 
 | Field | Value |
 |-------|-------|
@@ -404,6 +404,8 @@
 | **Description** | Create HazardSystem that processes hazard placements from room JSON. HazardSystem.spawn(type, position, params) creates visual + collision for each type. Initial types: `static-discharge` (pulsing blue spark sphere, damages player in radius every tick interval) and `loose-tile` (floor section that drops 1s after step, respawns after 2s). RoomAssembler calls HazardSystem.spawn() for each hazard in room data. HazardSystem.update(dt, playerPos) checks collisions. Emit `PLAYER_DAMAGED` for hazard hits. |
 | **Acceptance Criteria** | Hazards spawn from room JSON. Static discharge damages player periodically. Loose tiles collapse visually and respawn. Hazards cleaned up on room dispose. |
 | **Verification** | Load atrium-room-square (has static-discharge hazard). Walk into hazard zone. Verify damage applied. |
+
+**Implementation note**: Created `HazardSystem` in `src/world/HazardSystem.ts` with two hazard types: `static-discharge` (pulsing blue sphere, periodic damage in radius) and `loose-tile` (AABB step detection → wobble → collapse → respawn state machine). System wired into Game.ts update loop. RoomAssembler passes hazardSystem to `assemble()` to spawn hazards from room JSON. Config defaults in `gameConfig.ts` under `hazards`.
 
 ---
 

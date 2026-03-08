@@ -121,6 +121,22 @@ export const GAME_CONFIG = {
     shatterPieceCount: 8,
   },
 
+  // ── Hazards ────────────────────────────────────────────────
+  hazards: {
+    staticDischarge: {
+      defaultRadius: 1.5,
+      defaultDamage: 5,
+      defaultInterval: 1000,
+      pulseSpeed: 2.0,
+    },
+    looseTile: {
+      defaultSize: 1.0,
+      collapseDelay: 1000,
+      respawnDelay: 2000,
+      collapseDepth: 3,
+    },
+  },
+
   // ── Physics ─────────────────────────────────────────────────
   physics: {
     gravity: -9.8,
