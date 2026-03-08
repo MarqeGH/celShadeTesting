@@ -238,6 +238,8 @@ export class EncounterManager {
           }
           if (enemy instanceof AggregateBoss) {
             enemy.setScene(this.scene);
+            enemy.setSpawnSystems(this.combatSystem, this.staggerSystem);
+            enemy.preloadMinionData();
           }
 
           this.scene.add(enemy.group);

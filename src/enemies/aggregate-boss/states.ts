@@ -526,6 +526,10 @@ export class AggregateStaggeredState implements AIState<EnemyContext> {
   update(dt: number, _ctx: EnemyContext): string | null {
     this.timer += dt;
     if (this.timer >= this.duration) {
+      // In Phase 2+, split instead of returning to chase
+      if (this.boss.canSplit()) {
+        return 'split';
+      }
       return 'chase';
     }
     return null;
@@ -566,4 +570,54 @@ export class AggregatePhaseTransitionState implements AIState<EnemyContext> {
     this.boss.setPhaseTransitionGlow(false);
     this.boss.onPhaseTransitionComplete();
   }
+}
+
+// ── Split (Phase 2+ stagger → split into minions) ───────────────
+
+export class AggregateSplitState implements AIState<EnemyContext> {
+  readonly name = 'split';
+  private boss: AggregateBoss;
+
+  constructor(boss: AggregateBoss) {
+    this.boss = boss;
+  }
+
+  enter(_ctx: EnemyContext): void {
+    this.boss.performSplit();
+  }
+
+  update(dt: number, ctx: EnemyContext): string | null {
+    const shouldEnd = this.boss.updateSplitPhase(dt, ctx.playerPosition);
+    if (shouldEnd) {
+      return 'reform';
+    }
+    return null;
+  }
+
+  exit(_ctx: EnemyContext): void {}
+}
+
+// ── Reform (minions → boss reconstitutes) ────────────────────────
+
+export class AggregateReformState implements AIState<EnemyContext> {
+  readonly name = 'reform';
+  private boss: AggregateBoss;
+
+  constructor(boss: AggregateBoss) {
+    this.boss = boss;
+  }
+
+  enter(_ctx: EnemyContext): void {
+    this.boss.performReform();
+  }
+
+  update(dt: number, _ctx: EnemyContext): string | null {
+    const complete = this.boss.updateReformAnimation(dt);
+    if (complete) {
+      return 'chase';
+    }
+    return null;
+  }
+
+  exit(_ctx: EnemyContext): void {}
 }

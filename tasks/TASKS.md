@@ -1,6 +1,6 @@
 # Task Registry
 
-> 49 of 86 tasks completed (T-001–T-047 + T-049 + T-BUG-001 done). Phase 6 tasks T-048, T-050–T-085 remain.
+> 50 of 86 tasks completed (T-001–T-047 + T-049–T-050 + T-BUG-001 done). Phase 6 tasks T-048, T-051–T-085 remain.
 > Completed task details are archived in `tasks/completed/`:
 > - [Core Infrastructure](completed/core-infrastructure.md) — T-001, T-003, T-004, T-005, T-014, T-024
 > - [Player & Combat](completed/player-combat.md) — T-002, T-006–T-010, T-015–T-019, T-031, T-039–T-041
@@ -215,7 +215,7 @@
 
 ---
 
-### T-050: Boss — The Aggregate (Split Mechanic)
+### [DONE] T-050: Boss — The Aggregate (Split Mechanic)
 
 | Field | Value |
 |-------|-------|
@@ -226,6 +226,8 @@
 | **Description** | Add split/reform mechanic to The Aggregate. In Phase 2+, on stagger: boss splits into 3–5 independent TriangleShard minions for 8 seconds. Minions have 15 HP each. After 8s or all minions killed, boss reforms at center of remaining minions. Boss HP does not regen during split. If boss HP < 33% during split, reforms immediately after 1 minion killed. Visual: triangles detach and scatter, reform animates them back together. |
 | **Acceptance Criteria** | Boss splits on stagger, minions are real TriangleShards that can be fought, boss reforms after timer or all killed, HP preserved across split/reform. |
 | **Verification** | Trigger stagger in Phase 2. Verify minion spawning. Kill some minions, verify reform. |
+
+**Implementation note**: 2 new FSM states (split, reform) + modified staggered state. AggregateBoss spawns real TriangleShard instances with 15 HP via preloaded JSON data, registers them with CombatSystem and StaggerSystem independently of EncounterManager. Boss is invulnerable during split (hurtbox unregistered, takeDamage returns early). Reform calculates center of remaining alive minions, kills/disposes all, repositions boss, re-registers hurtbox. Reform animation spreads cones outward then converges over 1s. Phase 3 early reform triggers after first minion killed. 5s cooldown prevents immediate re-split. EncounterManager passes combatSystem/staggerSystem refs via setSpawnSystems().
 
 ---
 

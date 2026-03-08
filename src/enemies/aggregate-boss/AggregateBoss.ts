@@ -4,8 +4,11 @@ import { SphereShape, HitboxManager, Hitbox } from '../../combat/HitboxManager';
 import { EnemyData, AttackDataSchema } from '../EnemyFactory';
 import { EnemyRegistry } from '../EnemyRegistry';
 import { EventBus } from '../../app/EventBus';
+import { CombatSystem } from '../../combat/CombatSystem';
+import { StaggerSystem } from '../../combat/StaggerSystem';
 import { createCelMaterial } from '../../rendering/CelShadingPipeline';
 import { ObjectPool } from '../../engine/ObjectPool';
+import { TriangleShard } from '../triangle-shard/TriangleShard';
 import {
   AggregateIdleState,
   AggregateChaseState,
@@ -15,6 +18,8 @@ import {
   AggregateCooldownState,
   AggregateStaggeredState,
   AggregatePhaseTransitionState,
+  AggregateSplitState,
+  AggregateReformState,
 } from './states';
 
 // ── Constants ────────────────────────────────────────────────────
@@ -35,6 +40,15 @@ const JITTER_AMPLITUDE = 0.015;
 const BOSS_SHATTER_SPEED = 3;
 const BOSS_SHATTER_GRAVITY = -8;
 const BOSS_SHATTER_CLEANUP = 2.5;
+
+// Split/reform constants
+const SPLIT_DURATION = 8; // seconds
+const SPLIT_COOLDOWN = 5; // seconds after reform before next split
+const SPLIT_MINION_HP = 15;
+const SPLIT_MIN_COUNT = 3;
+const SPLIT_MAX_COUNT = 5;
+const SPLIT_SPAWN_RADIUS = 3; // spread radius around boss position
+const REFORM_DURATION = 1; // seconds for reform animation
 
 // ── Projectile ──────────────────────────────────────────────────
 
@@ -124,6 +138,22 @@ export class AggregateBoss extends BaseEnemy {
   // Jitter timer
   private _jitterTime = 0;
 
+  // Split/reform system
+  private _combatSystem: CombatSystem | null = null;
+  private _staggerSystem: StaggerSystem | null = null;
+  private _splitMinions: TriangleShard[] = [];
+  private _isSplit = false;
+  private _splitTimer = 0;
+  private _splitCooldown = 0;
+  private _minionData: EnemyData | null = null;
+  private _minionKillCount = 0;
+  private _minionDeathListener: ((data: { enemyId: string }) => void) | null = null;
+  private _minionEntityIds: Set<string> = new Set();
+  private _reforming = false;
+  private _reformTimer = 0;
+  // Player position cache for minion updates during split
+  private _lastPlayerPosition = new THREE.Vector3();
+
   constructor(
     data: EnemyData,
     position: THREE.Vector3,
@@ -167,6 +197,35 @@ export class AggregateBoss extends BaseEnemy {
   /** Set the scene reference so projectiles can be added/removed. */
   setScene(scene: THREE.Scene): void {
     this._scene = scene;
+  }
+
+  /** Set combat/stagger system refs for split minion spawning. */
+  setSpawnSystems(combatSystem: CombatSystem, staggerSystem: StaggerSystem): void {
+    this._combatSystem = combatSystem;
+    this._staggerSystem = staggerSystem;
+  }
+
+  /** Preload TriangleShard JSON for split minion creation. */
+  async preloadMinionData(): Promise<void> {
+    try {
+      const resp = await fetch('/data/enemies/triangle-shard.json');
+      this._minionData = await resp.json();
+    } catch (err) {
+      console.warn('[AggregateBoss] Failed to preload minion data:', err);
+    }
+  }
+
+  /** Whether the boss can currently split (Phase 2+, not already split, off cooldown). */
+  canSplit(): boolean {
+    return (
+      this.currentPhase >= 2 &&
+      !this._isSplit &&
+      this._splitCooldown <= 0 &&
+      this._minionData !== null &&
+      this._combatSystem !== null &&
+      this._staggerSystem !== null &&
+      this._scene !== null
+    );
   }
 
   // ── Mesh creation ─────────────────────────────────────────────
@@ -218,7 +277,9 @@ export class AggregateBoss extends BaseEnemy {
       .addState(new AggregateTriangleScatterState(this, this._attacks))
       .addState(new AggregateCooldownState(this, cooldownDuration))
       .addState(new AggregateStaggeredState(this, staggerDuration))
-      .addState(new AggregatePhaseTransitionState(this, phaseTransitionDuration));
+      .addState(new AggregatePhaseTransitionState(this, phaseTransitionDuration))
+      .addState(new AggregateSplitState(this))
+      .addState(new AggregateReformState(this));
 
     this.fsm.setState('idle');
   }
@@ -226,6 +287,9 @@ export class AggregateBoss extends BaseEnemy {
   // ── Damage override (phase transitions) ────────────────────────
 
   override takeDamage(amount: number): number {
+    // Boss is invulnerable while split into minions
+    if (this._isSplit) return this.stats.hp;
+
     const prevHp = this.stats.hp;
     const result = super.takeDamage(amount);
 
@@ -298,6 +362,200 @@ export class AggregateBoss extends BaseEnemy {
         mat.uniforms['uBaseColor'].value.copy(color);
       }
     }
+  }
+
+  // ── Split/reform mechanic ────────────────────────────────────
+
+  /** Split the boss into TriangleShard minions. Called by AggregateSplitState. */
+  performSplit(): void {
+    if (!this._minionData || !this._combatSystem || !this._staggerSystem || !this._scene) return;
+
+    // Hide all cluster cones
+    for (const cone of this.clusterCones) {
+      cone.visible = false;
+    }
+
+    // Temporarily unregister boss hurtbox
+    this.hitboxManager.unregisterHurtbox(this.entityId);
+
+    // Determine minion count (3–5)
+    const count = SPLIT_MIN_COUNT + Math.floor(Math.random() * (SPLIT_MAX_COUNT - SPLIT_MIN_COUNT + 1));
+    const bossPos = this.group.position;
+
+    this._splitMinions = [];
+    this._minionEntityIds.clear();
+    this._minionKillCount = 0;
+
+    for (let i = 0; i < count; i++) {
+      // Create modified data with reduced HP
+      const data: EnemyData = JSON.parse(JSON.stringify(this._minionData));
+      data.stats.maxHP = SPLIT_MINION_HP;
+
+      // Spawn position: spread around boss position in a circle
+      const angle = (i / count) * Math.PI * 2;
+      const spawnPos = new THREE.Vector3(
+        bossPos.x + Math.cos(angle) * SPLIT_SPAWN_RADIUS,
+        0,
+        bossPos.z + Math.sin(angle) * SPLIT_SPAWN_RADIUS,
+      );
+
+      const minion = new TriangleShard(data, spawnPos, this.eventBus, this.hitboxManager);
+      this._scene.add(minion.group);
+      this._combatSystem.registerEntity(minion);
+
+      // Register poise with StaggerSystem
+      this._staggerSystem.register(
+        minion.entityId,
+        {
+          maxPoise: data.stats.poise,
+          regenDelay: data.stats.poiseRegenDelay / 1000,
+          regenRate: data.stats.poiseRegenRate,
+        },
+        () => minion.getFSM().setState('staggered'),
+      );
+
+      this._splitMinions.push(minion);
+      this._minionEntityIds.add(minion.stringId);
+    }
+
+    this._isSplit = true;
+    this._splitTimer = SPLIT_DURATION;
+
+    // Listen for minion deaths
+    this._minionDeathListener = (data: { enemyId: string }) => {
+      if (this._minionEntityIds.has(data.enemyId)) {
+        this._minionKillCount++;
+      }
+    };
+    this.eventBus.on('ENEMY_DIED', this._minionDeathListener);
+
+    console.log(`[AggregateBoss] Split into ${count} minions`);
+  }
+
+  /**
+   * Update the split phase. Returns true when split should end.
+   * Called by AggregateSplitState.
+   */
+  updateSplitPhase(dt: number, playerPosition: THREE.Vector3): boolean {
+    this._splitTimer -= dt;
+
+    // Update alive minions
+    for (const minion of this._splitMinions) {
+      if (!minion.isDead()) {
+        minion.update(dt, playerPosition);
+      }
+    }
+
+    // Check end conditions
+    const allDead = this._splitMinions.every(m => m.isDead());
+    const timerExpired = this._splitTimer <= 0;
+    const phase3EarlyReform = this.currentPhase >= 3 && this._minionKillCount >= 1;
+
+    return allDead || timerExpired || phase3EarlyReform;
+  }
+
+  /** Reform the boss from split minions. Called by AggregateReformState. */
+  performReform(): void {
+    // Calculate center of remaining alive minions
+    const aliveMinions = this._splitMinions.filter(m => !m.isDead());
+    const center = new THREE.Vector3();
+
+    if (aliveMinions.length > 0) {
+      for (const minion of aliveMinions) {
+        center.add(minion.getPosition());
+      }
+      center.divideScalar(aliveMinions.length);
+    } else {
+      center.copy(this.group.position);
+    }
+    center.y = 0;
+
+    // Kill remaining alive minions and clean up all
+    for (const minion of this._splitMinions) {
+      if (!minion.isDead()) {
+        minion.die();
+      }
+      // Unregister from systems
+      if (this._combatSystem) {
+        this._combatSystem.unregisterEntity(minion.entityId);
+      }
+      if (this._staggerSystem) {
+        this._staggerSystem.unregister(minion.entityId);
+      }
+      // Remove from scene (dispose handles geometry/material cleanup)
+      minion.dispose();
+    }
+    this._splitMinions = [];
+    this._minionEntityIds.clear();
+
+    // Unsubscribe from death events
+    if (this._minionDeathListener) {
+      this.eventBus.off('ENEMY_DIED', this._minionDeathListener);
+      this._minionDeathListener = null;
+    }
+
+    // Move boss to center of where minions were
+    this.group.position.copy(center);
+
+    // Show cluster cones
+    for (const cone of this.clusterCones) {
+      cone.visible = true;
+    }
+
+    // Re-register boss hurtbox
+    const hurtboxShape = this.getHurtboxShape();
+    this.hitboxManager.registerHurtbox(this.entityId, hurtboxShape);
+
+    this._isSplit = false;
+    this._splitCooldown = SPLIT_COOLDOWN;
+    this._reforming = true;
+    this._reformTimer = 0;
+
+    console.log('[AggregateBoss] Reforming');
+  }
+
+  /**
+   * Update reform animation. Returns true when reform is complete.
+   * Cones expand outward then snap back to rest positions over REFORM_DURATION.
+   */
+  updateReformAnimation(dt: number): boolean {
+    this._reformTimer += dt;
+    const t = Math.min(this._reformTimer / REFORM_DURATION, 1);
+
+    // Animate cones: start spread out, converge to rest positions
+    // Use ease-in curve (starts slow, accelerates)
+    const progress = t * t;
+
+    for (let i = 0; i < this.clusterCones.length; i++) {
+      const cone = this.clusterCones[i];
+      const rest = this.coneRestPositions[i];
+
+      // Start offset = rest * 3 (spread out), lerp to rest
+      const spread = 3 - progress * 2; // goes from 3 → 1
+      cone.position.x = rest.x * spread;
+      cone.position.y = rest.y * spread;
+      cone.position.z = rest.z * spread;
+    }
+
+    if (t >= 1) {
+      // Snap to exact rest positions
+      for (let i = 0; i < this.clusterCones.length; i++) {
+        this.clusterCones[i].position.copy(this.coneRestPositions[i]);
+      }
+      this._reforming = false;
+      return true;
+    }
+    return false;
+  }
+
+  /** Whether the boss is currently split. */
+  get isSplit(): boolean {
+    return this._isSplit;
+  }
+
+  /** Whether the boss is currently reforming. */
+  get isReforming(): boolean {
+    return this._reforming;
   }
 
   // ── Projectile system (same pattern as CubeSentinel) ──────────
@@ -438,6 +696,34 @@ export class AggregateBoss extends BaseEnemy {
   override die(): void {
     if (this.isDead() || this.isDying) return;
 
+    // Clean up split minions if dying during split
+    if (this._isSplit) {
+      for (const minion of this._splitMinions) {
+        if (!minion.isDead()) {
+          minion.die();
+        }
+        if (this._combatSystem) this._combatSystem.unregisterEntity(minion.entityId);
+        if (this._staggerSystem) this._staggerSystem.unregister(minion.entityId);
+        minion.dispose();
+      }
+      this._splitMinions = [];
+      this._minionEntityIds.clear();
+      this._isSplit = false;
+
+      if (this._minionDeathListener) {
+        this.eventBus.off('ENEMY_DIED', this._minionDeathListener);
+        this._minionDeathListener = null;
+      }
+
+      // Re-show cones so the shatter effect works
+      for (const cone of this.clusterCones) {
+        cone.visible = true;
+      }
+      // Re-register hurtbox so base die() can unregister it cleanly
+      const hurtboxShape = this.getHurtboxShape();
+      this.hitboxManager.registerHurtbox(this.entityId, hurtboxShape);
+    }
+
     // Hide all cluster cones
     for (const cone of this.clusterCones) {
       cone.visible = false;
@@ -524,6 +810,9 @@ export class AggregateBoss extends BaseEnemy {
   // ── Update override ────────────────────────────────────────────
 
   override update(dt: number, playerPosition: THREE.Vector3): void {
+    // Cache player position for split phase
+    this._lastPlayerPosition.copy(playerPosition);
+
     // Update boss-specific death animation (before super, which returns early during dying)
     if (this._bossDying) {
       this.updateBossShatter(dt);
@@ -534,14 +823,36 @@ export class AggregateBoss extends BaseEnemy {
 
     // Gameplay updates only when alive
     if (!this.isDead()) {
+      // Decrement split cooldown
+      if (this._splitCooldown > 0) {
+        this._splitCooldown -= dt;
+      }
+
       this.updateProjectiles(dt);
-      this.updateConeJitter(dt);
+
+      // Skip cone jitter while split or reforming (reform has its own animation)
+      if (!this._isSplit && !this._reforming) {
+        this.updateConeJitter(dt);
+      }
     }
   }
 
   // ── Dispose override ──────────────────────────────────────────
 
   override dispose(): void {
+    // Clean up split minions
+    for (const minion of this._splitMinions) {
+      if (!minion.isDead()) minion.die();
+      if (this._combatSystem) this._combatSystem.unregisterEntity(minion.entityId);
+      if (this._staggerSystem) this._staggerSystem.unregister(minion.entityId);
+      minion.dispose();
+    }
+    this._splitMinions = [];
+    if (this._minionDeathListener) {
+      this.eventBus.off('ENEMY_DIED', this._minionDeathListener);
+      this._minionDeathListener = null;
+    }
+
     // Clean up projectiles
     this.projectilePool.forEachActive((proj) => {
       this.deactivateProjectile(proj);
