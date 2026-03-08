@@ -1,6 +1,6 @@
 # Task Registry
 
-> 44 of 46 tasks completed. Remaining work below.
+> 45 of 46 tasks completed. Remaining work below.
 > Completed task details are archived in `tasks/completed/`:
 > - [Core Infrastructure](completed/core-infrastructure.md) — T-001, T-003, T-004, T-005, T-014, T-024
 > - [Player & Combat](completed/player-combat.md) — T-002, T-006–T-010, T-015–T-019, T-031, T-039–T-041
@@ -57,7 +57,7 @@
 
 ---
 
-### T-045: Game Config
+### [DONE] T-045: Game Config
 
 | Field | Value |
 |-------|-------|
@@ -67,6 +67,8 @@
 | **Target Files** | `src/config/gameConfig.ts`, `src/config/renderConfig.ts` |
 | **Description** | Create centralized configuration files. gameConfig.ts: all gameplay tuning values (player speeds, damage values, stamina costs, timing windows) as a typed const object. renderConfig.ts: resolution scale, shadow quality, outline width, post-processing toggles. All values referenced by systems instead of hardcoded numbers. |
 | **Acceptance Criteria** | All tuning values are in config files. No magic numbers in gameplay code. Changing a config value changes behavior without code changes. |
+
+**Implementation note**: Created `src/config/gameConfig.ts` with a structured `GAME_CONFIG` const object grouping all gameplay tuning values into 14 domains: timing, player movement, stats, stamina costs, dodge, parry, heal, light attack, heavy attack, camera, input, world, pickups, enemy, and physics. Created `src/config/renderConfig.ts` with `RENDER_CONFIG` covering resolution scaling, clear color, cel-shading ramp (thresholds + intensities), outline parameters (width, depth/normal thresholds), camera clipping, and post-processing toggles. Both exported as `as const` with derived types. Existing `src/utils/constants.ts` (from T-044) provides flat re-exports for backward compatibility.
 
 ---
 
