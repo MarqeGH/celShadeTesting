@@ -1,0 +1,24 @@
+{
+  "id": "atrium-junction-T",
+  "zone": "shattered-atrium",
+  "size": { "x": 12, "y": 3, "z": 16 },
+  "geometry": "prefab:atrium-junction-T",
+  "spawnPoints": [
+    { "x": 0, "y": 0, "z": 0 },
+    { "x": -4, "y": 0, "z": 4 },
+    { "x": 4, "y": 0, "z": 6 }
+  ],
+  "playerEntry": { "x": 0, "y": 0, "z": -7.5 },
+  "exits": [
+    { "position": { "x": 0, "y": 0, "z": 7.5 }, "direction": "north", "locked": true },
+    { "position": { "x": 5.5, "y": 0, "z": 4 }, "direction": "east", "locked": true }
+  ],
+  "hazards": [
+    {
+      "type": "static-discharge",
+      "position": { "x": 4, "y": 0, "z": 2 },
+      "params": { "radius": 1.5, "damagePerTick": 5, "tickInterval": 1000 }
+    }
+  ],
+  "props": []
+}

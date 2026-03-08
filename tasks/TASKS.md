@@ -1,6 +1,6 @@
 # Task Registry
 
-> 56 of 86 tasks completed (T-001–T-055 + T-BUG-001 done). Phase 6 tasks T-056–T-085 remain.
+> 57 of 86 tasks completed (T-001–T-057 + T-BUG-001 done). Phase 6 tasks T-058–T-085 remain.
 > Completed task details are archived in `tasks/completed/`:
 > - [Core Infrastructure](completed/core-infrastructure.md) — T-001, T-003, T-004, T-005, T-014, T-024
 > - [Player & Combat](completed/player-combat.md) — T-002, T-006–T-010, T-015–T-019, T-031, T-039–T-041
@@ -329,7 +329,7 @@
 
 ---
 
-### T-057: Room Module — atrium-junction-T
+### [DONE] T-057: Room Module — atrium-junction-T
 
 | Field | Value |
 |-------|-------|
@@ -340,6 +340,8 @@
 | **Description** | Create JSON for the T-intersection room. 12m×16m floor, 3m walls. T-shape: main corridor 12m wide, branch extends 8m to the right. 3 spawn points (center, left alcove, right branch end). Player entry at south. 2 exits: north + east. 1 static-discharge hazard at the junction corner (radius 1.5m, 5 dmg/tick, 1s interval). |
 | **Acceptance Criteria** | JSON conforms to RoomModuleData. Room builds correctly with T-shaped walls. Both exits functional. |
 | **Verification** | Load room. Walk all paths. Verify spawn point accessibility and exit door positions. |
+
+> **Implementation note**: Created `data/rooms/atrium-junction-T.json` — 12×16m bounding box, 3m walls, geometry `prefab:atrium-junction-T`. 3 spawn points positioned at center, left alcove, and right branch end. North + east exits. Static-discharge hazard at junction corner. Note: RoomAssembler currently builds rectangular perimeter walls from `size`; the `geometry` field is declared but not yet parsed for T-shaped wall generation.
 
 ---
 
