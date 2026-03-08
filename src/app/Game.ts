@@ -33,6 +33,7 @@ import { RoomAssembler } from '../world/RoomAssembler';
 import { RoomModule, type RoomModuleData, type ExitDoor } from '../world/RoomModule';
 import { AssetLoader } from '../engine/AssetLoader';
 import { PickupSystem } from '../interactions/PickupSystem';
+import { WeaponPickup } from '../interactions/WeaponPickup';
 import { MenuSystem } from '../ui/MenuSystem';
 import { RunState } from '../progression/RunState';
 import { ParticleSystem } from '../rendering/ParticleSystem';
@@ -70,6 +71,7 @@ export class Game {
   private roomAssembler: RoomAssembler;
   private assetLoader: AssetLoader;
   private pickupSystem: PickupSystem;
+  private weaponPickup: WeaponPickup;
   private menuSystem: MenuSystem;
   private particleSystem: ParticleSystem;
   private runState: RunState;
@@ -165,6 +167,11 @@ export class Game {
 
     // Pickup system — listens for ENEMY_DIED, spawns shard pickups
     this.pickupSystem = new PickupSystem(this.scene, this.eventBus);
+
+    // Weapon pickup — listens for ROOM_CLEARED, 40% chance to spawn weapon pickup
+    this.weaponPickup = new WeaponPickup(
+      this.scene, this.eventBus, this.input, this.weaponSystem, container,
+    );
 
     // Particle system — geometric particle effects for combat/pickup feedback
     this.particleSystem = new ParticleSystem(
@@ -331,6 +338,7 @@ export class Game {
     this.combatSystem.update();
     this.staggerSystem.update(dt);
     this.pickupSystem.update(dt, playerPos);
+    this.weaponPickup.update(dt, playerPos);
     this.particleSystem.update(dt);
     this.doorSystem.update(dt);
     this.playerStats.update(dt);
@@ -465,6 +473,7 @@ export class Game {
     this.postProcessing.dispose();
     this.encounterManager.dispose();
     this.pickupSystem.dispose();
+    this.weaponPickup.dispose();
     this.particleSystem.dispose();
     this.lockOnSystem.dispose();
     this.cameraShake.dispose();

@@ -1,6 +1,6 @@
 # Task Registry
 
-> 55 of 86 tasks completed (T-001–T-054 + T-BUG-001 done). Phase 6 tasks T-055–T-085 remain.
+> 56 of 86 tasks completed (T-001–T-055 + T-BUG-001 done). Phase 6 tasks T-056–T-085 remain.
 > Completed task details are archived in `tasks/completed/`:
 > - [Core Infrastructure](completed/core-infrastructure.md) — T-001, T-003, T-004, T-005, T-014, T-024
 > - [Player & Combat](completed/player-combat.md) — T-002, T-006–T-010, T-015–T-019, T-031, T-039–T-041
@@ -297,7 +297,7 @@
 
 ---
 
-### T-055: Weapon Pickup During Runs
+### [DONE] T-055: Weapon Pickup During Runs
 
 | Field | Value |
 |-------|-------|
@@ -308,6 +308,8 @@
 | **Description** | After clearing a room, spawn a random weapon pickup from the unlock pool. WeaponPickup: floating weapon mesh with glow, press E to pick up. If player has 2 weapons, picking up replaces currently equipped (dropped weapon despawns). Spawn at room center. Weapon type randomly selected from unlocked weapons. Only spawns if `Math.random() < 0.4` (40% chance per room clear). |
 | **Acceptance Criteria** | Weapon pickup appears after some room clears. Player can interact to equip. Old weapon replaced if inventory full. |
 | **Verification** | Clear 5+ rooms. Verify weapon pickups appear ~40% of the time. Pick up weapon, verify it equips. |
+
+**Implementation Note**: Created `src/interactions/WeaponPickup.ts` — self-contained system that listens for `ROOM_CLEARED`, rolls 40% chance, spawns floating octahedron with glow pulse at room center. Press E within 2.5m to pick up. If player has empty secondary slot, equips there; otherwise replaces primary. Added `roomCenter` to `ROOM_CLEARED` event payload (computed from spawn point average in EncounterManager). Added `WEAPON_PICKUP_COLLECTED` event. Integrated in Game.ts (construct, update, dispose).
 
 ---
 

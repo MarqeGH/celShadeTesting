@@ -10,11 +10,12 @@ export interface GameEvents {
   ENEMY_DAMAGED: { enemyId: string; amount: number; currentHP: number; sourceId?: string; position: { x: number; y: number; z: number } };
   ENEMY_DIED: { enemyId: string; position: { x: number; y: number; z: number } };
   SHARD_COLLECTED: { amount: number; totalShards: number; position: { x: number; y: number; z: number } };
-  ROOM_CLEARED: { roomId: string };
+  ROOM_CLEARED: { roomId: string; roomCenter: { x: number; y: number; z: number } };
   PLAYER_DIED: {};
   RUN_STARTED: {};
   RUN_ENDED: { survived: boolean; shardsCollected: number };
   WEAPON_SWAPPED: { weaponId: string; weaponName: string };
+  WEAPON_PICKUP_COLLECTED: { weaponId: string; weaponName: string; position: { x: number; y: number; z: number } };
 }
 
 // ── Types ──────────────────────────────────────────────────────────

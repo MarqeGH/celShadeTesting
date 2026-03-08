@@ -307,7 +307,19 @@ export class EncounterManager {
   }
 
   private emitRoomCleared(): void {
-    this.eventBus.emit('ROOM_CLEARED', { roomId: this.roomId });
+    // Compute room center from spawn points (average position)
+    const center = { x: 0, y: 0, z: 0 };
+    if (this.spawnPoints.length > 0) {
+      for (const sp of this.spawnPoints) {
+        center.x += sp.x;
+        center.y += sp.y;
+        center.z += sp.z;
+      }
+      center.x /= this.spawnPoints.length;
+      center.y /= this.spawnPoints.length;
+      center.z /= this.spawnPoints.length;
+    }
+    this.eventBus.emit('ROOM_CLEARED', { roomId: this.roomId, roomCenter: center });
     console.log(`[EncounterManager] ROOM_CLEARED emitted for "${this.roomId}"`);
   }
 
