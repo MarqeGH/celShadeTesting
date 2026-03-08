@@ -155,6 +155,8 @@ export class Game {
     this.encounterManager = new EncounterManager(
       this.eventBus, this.hitboxManager, this.combatSystem, this.staggerSystem, this.scene,
     );
+    // Provide test arena wall colliders for enemy collision
+    this.encounterManager.setWallColliders(this.testArena.wallColliders);
 
     // Pickup system — listens for ENEMY_DIED, spawns shard pickups
     this.pickupSystem = new PickupSystem(this.scene, this.eventBus);
@@ -379,6 +381,9 @@ export class Game {
     // Register room with door system
     this.doorSystem.setRoom(room);
 
+    // Update encounter manager with new room's wall colliders
+    this.encounterManager.setWallColliders(room.wallColliders);
+
     // Start a new encounter for the new room
     const encounter: EncounterData = {
       id: `encounter-${roomData.id}`,
@@ -420,6 +425,9 @@ export class Game {
 
     // Clear current encounter
     this.encounterManager.dispose();
+
+    // Reset wall colliders to test arena
+    this.encounterManager.setWallColliders(this.testArena.wallColliders);
 
     // Restore HUD
     this.uiManager.setState('gameplay');

@@ -6,6 +6,7 @@ import { CombatSystem } from '../combat/CombatSystem';
 import { StaggerSystem } from '../combat/StaggerSystem';
 import { HitboxManager } from '../combat/HitboxManager';
 import { EventBus } from '../app/EventBus';
+import { WallCollider } from './RoomModule';
 
 // ── Encounter data interfaces (matches DATA_SCHEMAS.md) ──────
 
@@ -62,6 +63,8 @@ export class EncounterManager {
   private playerPosition: THREE.Vector3 = new THREE.Vector3();
   // True while async enemy spawning is in-flight (prevents premature wave-clear)
   private isSpawning = false;
+  // Wall colliders from the current room (for enemy wall collision)
+  private wallColliders: WallCollider[] = [];
 
   constructor(
     eventBus: EventBus,
@@ -126,6 +129,11 @@ export class EncounterManager {
       const enemy = this.allEnemies[i];
       enemy.update(dt, playerPosition);
 
+      // Resolve wall collisions after movement
+      if (!enemy.isDead() && this.wallColliders.length > 0) {
+        enemy.resolveWallCollisions(this.wallColliders);
+      }
+
       // Clean up dead enemies that finished their death animation
       if (enemy.isDead() && !enemy.isDying) {
         this.combatSystem.unregisterEntity(enemy.entityId);
@@ -179,6 +187,13 @@ export class EncounterManager {
    */
   getAliveCount(): number {
     return this.waveEnemies.filter((e) => !e.isDead()).length;
+  }
+
+  /**
+   * Set the wall colliders for enemy collision resolution.
+   */
+  setWallColliders(walls: WallCollider[]): void {
+    this.wallColliders = walls;
   }
 
   /**

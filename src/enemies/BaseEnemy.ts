@@ -3,6 +3,8 @@ import { StateMachine } from '../ai/StateMachine';
 import { HitboxManager, SphereShape } from '../combat/HitboxManager';
 import { CombatEntity } from '../combat/CombatSystem';
 import { EventBus } from '../app/EventBus';
+import { SphereCollider, testSphereVsAABB, resolveCollision } from '../engine/CollisionSystem';
+import { WallCollider } from '../world/RoomModule';
 
 // ── Entity ID counter ───────────────────────────────────────────
 
@@ -92,6 +94,12 @@ export abstract class BaseEnemy implements CombatEntity {
   private _deathTimer = 0;
   private _shatterPieces: ShatterPiece[] = [];
 
+  // Wall collision sphere
+  private readonly _wallCollider: SphereCollider = {
+    center: new THREE.Vector3(),
+    radius: 0.8, // default, overridden in initialize() from hurtbox
+  };
+
   // Stagger callback (set externally, e.g. by the stagger system or FSM)
   private _onStagger: (() => void) | null = null;
 
@@ -133,6 +141,9 @@ export abstract class BaseEnemy implements CombatEntity {
     // Register hurtbox (sphere around mesh center)
     const hurtboxShape = this.getHurtboxShape();
     this.hitboxManager.registerHurtbox(this.entityId, hurtboxShape);
+
+    // Use hurtbox radius for wall collision sphere
+    this._wallCollider.radius = hurtboxShape.radius;
 
     // Set up FSM states
     this.initFSM();
@@ -492,6 +503,25 @@ export abstract class BaseEnemy implements CombatEntity {
       this.group.rotation.y = targetAngle;
     } else {
       this.group.rotation.y += Math.sign(delta) * maxTurn;
+    }
+  }
+
+  /**
+   * Resolve sphere-vs-AABB collisions against wall colliders.
+   * Call once per frame after all movement has been applied.
+   */
+  resolveWallCollisions(walls: WallCollider[]): void {
+    if (this._dead || this._dying) return;
+
+    const pos = this.group.position;
+    this._wallCollider.center.set(pos.x, pos.y, pos.z);
+
+    for (const wall of walls) {
+      const result = testSphereVsAABB(this._wallCollider, wall);
+      if (result.hit) {
+        resolveCollision(pos, result);
+        this._wallCollider.center.set(pos.x, pos.y, pos.z);
+      }
     }
   }
 

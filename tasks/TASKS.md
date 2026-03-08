@@ -1,6 +1,6 @@
 # Task Registry
 
-> 45 of 46 tasks completed. Remaining work below.
+> 46 of 46 tasks completed. Remaining work below.
 > Completed task details are archived in `tasks/completed/`:
 > - [Core Infrastructure](completed/core-infrastructure.md) — T-001, T-003, T-004, T-005, T-014, T-024
 > - [Player & Combat](completed/player-combat.md) — T-002, T-006–T-010, T-015–T-019, T-031, T-039–T-041
@@ -74,7 +74,7 @@
 
 ## Open Bugs
 
-### T-BUG-001: Enemy Wall Collision
+### [DONE] T-BUG-001: Enemy Wall Collision
 
 | Field | Value |
 |-------|-------|
@@ -84,6 +84,8 @@
 | **Target Files** | `src/enemies/BaseEnemy.ts`, `src/world/EncounterManager.ts`, `src/app/Game.ts` |
 | **Description** | Enemies walk through arena walls (especially Cube Sentinels retreating). Add sphere collider to BaseEnemy and resolve against wall AABBs after each movement update. EncounterManager needs access to current room's wall colliders. |
 | **Acceptance Criteria** | Enemies cannot walk through walls. Retreat stops at wall boundaries. Enemy movement slides along walls. |
+
+**Implementation note**: Added `SphereCollider` to `BaseEnemy` (radius sourced from hurtbox shape) with `resolveWallCollisions(walls)` method using `testSphereVsAABB` + `resolveCollision` from CollisionSystem — same approach as player wall collision. `EncounterManager` stores wall colliders via `setWallColliders()` and calls `resolveWallCollisions` on each alive enemy after its `update()` call. `Game.ts` passes wall colliders from `TestArena`/`RoomModule` to EncounterManager at construction, on room transition, and on hub return.
 
 ---
 
