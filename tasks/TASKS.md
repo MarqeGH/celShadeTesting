@@ -1,6 +1,6 @@
 # Task Registry
 
-> 43 of 46 tasks completed. Remaining work below.
+> 44 of 46 tasks completed. Remaining work below.
 > Completed task details are archived in `tasks/completed/`:
 > - [Core Infrastructure](completed/core-infrastructure.md) — T-001, T-003, T-004, T-005, T-014, T-024
 > - [Player & Combat](completed/player-combat.md) — T-002, T-006–T-010, T-015–T-019, T-031, T-039–T-041
@@ -42,7 +42,7 @@
 
 ---
 
-### T-044: Math Utilities
+### [DONE] T-044: Math Utilities
 
 | Field | Value |
 |-------|-------|
@@ -52,6 +52,8 @@
 | **Target Files** | `src/utils/math.ts`, `src/utils/timer.ts`, `src/utils/constants.ts` |
 | **Description** | Create utility functions. math.ts: `lerp`, `clamp`, `randomRange`, `randomInt`, `degToRad`, `radToDeg`, `distanceVec3`, `lerpVec3`. timer.ts: `CooldownTimer` class with `start(duration)`, `update(dt)`, `isReady()`, `reset()`. constants.ts: `FIXED_TIMESTEP`, `PLAYER_WALK_SPEED`, etc. |
 | **Acceptance Criteria** | All math functions produce correct results. CooldownTimer works. Constants are exported and typed. |
+
+**Implementation note**: Created three utility files. `math.ts`: `lerp`, `clamp`, `randomRange`, `randomInt`, `degToRad`, `radToDeg`, `distanceVec3` (uses temp Vector3 to avoid allocation), `lerpVec3` (writes to `out` parameter). `timer.ts`: `CooldownTimer` class with `start(duration)`, `update(dt)`, `isReady()`, `reset()`, plus `progress` and `remaining` getters. `constants.ts`: ~70 typed constants grouped by domain (timing, movement, stats, stamina costs, dodge, parry, heal, light/heavy attack, camera, input, world, pickups, enemy, physics) extracted from hardcoded values across the codebase.
 
 ---
 
