@@ -153,7 +153,7 @@
 
 ---
 
-### T-046: Spiral Dancer Enemy
+### [DONE] T-046: Spiral Dancer Enemy
 
 | Field | Value |
 |-------|-------|
@@ -164,6 +164,8 @@
 | **Description** | Implement the Spiral Dancer — fast melee skirmisher that orbits the player. Helix mesh (TubeGeometry along spiral curve, ~1.5m tall, purple #9944cc). FSM: idle → orbit (circle player at 5–7m, 8 m/s) → dart_strike (350ms telegraph, 150ms dash through player, 500ms recovery, 12 dmg) → whip_lash (300ms telegraph, 200ms 3m arc, 8 dmg) → cooldown → staggered. Register in EnemyRegistry. Side-effect import in Game.ts. |
 | **Acceptance Criteria** | Enemy spawns, orbits player, performs both attacks with visible telegraphs, takes damage, dies with shatter effect. |
 | **Verification** | Spawn via debug encounter. Observe orbit movement and attack patterns. Verify hitbox alignment. |
+
+**Implementation note**: Created `data/enemies/spiral-dancer.json` with 40 HP, 8 m/s moveSpeed, 15 poise, 2 attacks (dart_strike: 350ms telegraph, 150ms dash at 30 m/s, 12 dmg; whip_lash: 300ms telegraph, 200ms 3m arc, 8 dmg). `SpiralDancer.ts` extends BaseEnemy with helix mesh via custom HelixCurve (3 turns, 1.5m tall, 0.25m radius) + TubeGeometry, purple #9944cc cel-shaded material. 6 FSM states in `states.ts`: idle (aggro range 12m), orbit (circles player at 6m radius using angular velocity, attacks after 1.5s cooldown), dart_strike (dash through player), whip_lash (close-range arc), cooldown (800ms), staggered (1200ms). Registered in EnemyRegistry via side-effect import in Game.ts.
 
 ---
 

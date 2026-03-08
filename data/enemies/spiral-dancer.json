@@ -1,0 +1,97 @@
+{
+  "id": "spiral-dancer",
+  "name": "Spiral Dancer",
+  "shape": "helix",
+  "stats": {
+    "maxHP": 40,
+    "moveSpeed": 8,
+    "turnSpeed": 270,
+    "poise": 15,
+    "poiseRegenDelay": 2500,
+    "poiseRegenRate": 4
+  },
+  "perception": {
+    "aggroRange": 12,
+    "attackRange": 7,
+    "retreatRange": 5,
+    "losRequired": true
+  },
+  "attacks": [
+    {
+      "id": "dart_strike",
+      "name": "Dart Strike",
+      "telegraphDuration": 350,
+      "activeDuration": 150,
+      "recoveryDuration": 500,
+      "damage": 12,
+      "staggerDamage": 8,
+      "range": 6,
+      "hitboxShape": "line",
+      "hitboxSize": { "length": 6, "width": 1.2 },
+      "movementDuringAttack": { "type": "dash", "distance": 8, "speed": 30 }
+    },
+    {
+      "id": "whip_lash",
+      "name": "Whip Lash",
+      "telegraphDuration": 300,
+      "activeDuration": 200,
+      "recoveryDuration": 400,
+      "damage": 8,
+      "staggerDamage": 5,
+      "range": 3,
+      "hitboxShape": "arc",
+      "hitboxSize": { "radius": 3, "angle": 120 },
+      "movementDuringAttack": null
+    }
+  ],
+  "drops": {
+    "shards": { "min": 4, "max": 8 },
+    "fragmentChance": 0.08
+  },
+  "fsm": {
+    "initialState": "idle",
+    "states": [
+      {
+        "name": "idle",
+        "transitions": [
+          { "to": "orbit", "condition": "playerInAggroRange" }
+        ]
+      },
+      {
+        "name": "orbit",
+        "params": { "orbitRadius": 6, "orbitSpeed": 8, "attackCooldown": 1500 },
+        "transitions": [
+          { "to": "dart_strike", "condition": "attackReady_and_playerInRange" },
+          { "to": "whip_lash", "condition": "attackReady_and_playerClose" },
+          { "to": "idle", "condition": "playerOutOfAggroRange" }
+        ]
+      },
+      {
+        "name": "dart_strike",
+        "transitions": [
+          { "to": "cooldown", "condition": "attackComplete" }
+        ]
+      },
+      {
+        "name": "whip_lash",
+        "transitions": [
+          { "to": "cooldown", "condition": "attackComplete" }
+        ]
+      },
+      {
+        "name": "cooldown",
+        "params": { "duration": 800 },
+        "transitions": [
+          { "to": "orbit", "condition": "cooldownComplete" }
+        ]
+      },
+      {
+        "name": "staggered",
+        "params": { "duration": 1200 },
+        "transitions": [
+          { "to": "orbit", "condition": "staggerComplete" }
+        ]
+      }
+    ]
+  }
+}
