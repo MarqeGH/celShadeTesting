@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { WeaponData } from './WeaponData';
 import { STAMINA_COSTS } from '../player/PlayerStats';
 import { EventBus } from '../app/EventBus';
+import type { HitboxManager, Hitbox, SphereShape } from './HitboxManager';
 
 /**
  * Represents an active hitbox — a short-lived arc region in front of the attacker.
@@ -91,10 +92,20 @@ export class WeaponSystem {
   private secondaryWeapon: WeaponData | null = null;
   private cache = new Map<string, WeaponData>();
   private eventBus: EventBus | null = null;
+  private hitboxManager: HitboxManager | null = null;
+  private playerId = 1; // PLAYER_ENTITY_ID
+  /** Maps ActiveHitbox attackId → HitboxManager Hitbox for bridging */
+  private hitboxBridge = new Map<number, Hitbox>();
 
   /** Set the event bus for emitting weapon swap events. */
   setEventBus(bus: EventBus): void {
     this.eventBus = bus;
+  }
+
+  /** Set HitboxManager so player attack hitboxes register for collision detection. */
+  setHitboxManager(manager: HitboxManager, playerId: number): void {
+    this.hitboxManager = manager;
+    this.playerId = playerId;
   }
 
   /**
@@ -180,16 +191,32 @@ export class WeaponSystem {
     radius: number,
     arcDegrees: number,
   ): ActiveHitbox {
+    const id = nextAttackId++;
     const hitbox: ActiveHitbox = {
       origin: origin.clone(),
       direction: direction.clone().normalize(),
       radius,
       halfAngle: (arcDegrees * Math.PI) / 360, // half of full arc angle
-      attackId: nextAttackId++,
+      attackId: id,
       alreadyHit: new Set(),
     };
 
     this.activeHitboxes.push(hitbox);
+
+    // Bridge to HitboxManager for collision detection
+    if (this.hitboxManager) {
+      const weapon = this.equippedWeapon;
+      const sphereCenter = origin.clone().addScaledVector(direction, radius * 0.4);
+      const sphereShape: SphereShape = { type: 'sphere', center: sphereCenter, radius };
+      const managerHitbox = this.hitboxManager.createHitbox(
+        this.playerId,
+        id,
+        sphereShape,
+        { damage: weapon.baseDamage, staggerDamage: weapon.staggerDamage, knockback: 0 },
+      );
+      this.hitboxBridge.set(id, managerHitbox);
+    }
+
     return hitbox;
   }
 
@@ -199,6 +226,12 @@ export class WeaponSystem {
   updateHitbox(hitbox: ActiveHitbox, origin: THREE.Vector3, direction: THREE.Vector3): void {
     hitbox.origin.copy(origin);
     hitbox.direction.copy(direction).normalize();
+
+    // Update bridged HitboxManager sphere position
+    const bridged = this.hitboxBridge.get(hitbox.attackId);
+    if (bridged && bridged.shape.type === 'sphere') {
+      bridged.shape.center.copy(origin).addScaledVector(direction, hitbox.radius * 0.4);
+    }
   }
 
   /**
@@ -209,12 +242,26 @@ export class WeaponSystem {
     if (idx !== -1) {
       this.activeHitboxes.splice(idx, 1);
     }
+
+    // Remove bridged HitboxManager hitbox
+    const bridged = this.hitboxBridge.get(hitbox.attackId);
+    if (bridged) {
+      this.hitboxManager?.removeHitbox(bridged);
+      this.hitboxBridge.delete(hitbox.attackId);
+    }
   }
 
   /**
    * Remove all active hitboxes (e.g. on state interruption).
    */
   clearAll(): void {
+    // Remove all bridged hitboxes from HitboxManager
+    if (this.hitboxManager) {
+      for (const bridged of this.hitboxBridge.values()) {
+        this.hitboxManager.removeHitbox(bridged);
+      }
+    }
+    this.hitboxBridge.clear();
     this.activeHitboxes.length = 0;
   }
 

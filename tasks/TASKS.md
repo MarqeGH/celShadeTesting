@@ -89,6 +89,21 @@
 
 ---
 
+### [DONE] T-BUG-002: Player Attacks Deal No Damage
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `gameplay` |
+| **Priority** | P0 |
+| **Depends On** | T-051 |
+| **Target Files** | `src/combat/WeaponSystem.ts`, `src/app/Game.ts` |
+| **Description** | WeaponSystem.createHitbox() creates arc-based ActiveHitbox objects but never registers them with HitboxManager. CombatSystem only checks HitboxManager for overlaps, so player attacks never detect hits. Enemy attacks work because they use HitboxManager directly. |
+| **Acceptance Criteria** | Player light and heavy attacks deal damage to enemies. Hitboxes visible in debug wireframe overlay (F1). |
+
+**Implementation note:** Bridged WeaponSystem to HitboxManager. WeaponSystem.setHitboxManager() accepts a HitboxManager reference. On createHitbox(), a sphere Hitbox is also registered in HitboxManager (centered slightly forward from player, matching weapon radius). updateHitbox/removeHitbox/clearAll also sync to HitboxManager. Wired in Game.ts after HitboxManager construction. Also added F4 debug shortcut to kill all enemies in current room.
+
+---
+
 ## Work Type Reference
 
 | Work Type | Scope | Stay within |

@@ -23,6 +23,7 @@ export class DebugOverlay {
   enabled = false;
   godMode = false;
   instantKill = false;
+  clearRoomRequested = false;
 
   private ctx: DebugContext;
   private panel: HTMLDivElement;
@@ -127,6 +128,12 @@ export class DebugOverlay {
       e.preventDefault();
       this.instantKill = !this.instantKill;
       console.log(`[Debug] Instant kill: ${this.instantKill ? 'ON' : 'OFF'}`);
+    }
+
+    if (e.code === 'F4') {
+      e.preventDefault();
+      this.clearRoomRequested = true;
+      console.log('[Debug] Clear room requested');
     }
   };
 

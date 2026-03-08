@@ -130,6 +130,7 @@ export class Game {
     this.weaponSystem.setEventBus(this.eventBus);
     this.saveManager = new SaveManager(this.eventBus);
     this.hitboxManager = new HitboxManager();
+    this.weaponSystem.setHitboxManager(this.hitboxManager, PLAYER_ENTITY_ID);
     this.staggerSystem = new StaggerSystem();
     this.combatSystem = new CombatSystem(this.hitboxManager, this.eventBus, this.staggerSystem);
 
@@ -469,6 +470,17 @@ export class Game {
     this.uiManager.update();
     this.playerModel.update(dt);
     this.debugOverlay.update(dt);
+
+    // Debug: F4 clear room — kill all enemies instantly
+    if (this.debugOverlay.clearRoomRequested) {
+      this.debugOverlay.clearRoomRequested = false;
+      const enemies = this.encounterManager.getEnemies();
+      for (const enemy of enemies) {
+        if (!enemy.isDead()) {
+          enemy.takeDamage(enemy.getHp());
+        }
+      }
+    }
 
     // Lock-on system: acquire, switch, drop targets
     this.lockOnSystem.update(playerPos, this.cameraController.getYaw());
