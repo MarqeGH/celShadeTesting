@@ -73,6 +73,12 @@ export class PlayerStateMachine {
   }
 
   update(dt: number): void {
+    // Weapon swap — instant action, only in idle/run (no state transition)
+    const state = this.fsm.getCurrentStateName();
+    if ((state === 'idle' || state === 'run') && this.context.input.justPressed('swapWeapon')) {
+      this.context.weaponSystem.swapWeapon();
+    }
+
     this.fsm.update(dt);
 
     // Tick down parry damage buff

@@ -1,6 +1,6 @@
 # Task Registry
 
-> 54 of 86 tasks completed (T-001–T-053 + T-BUG-001 done). Phase 6 tasks T-054–T-085 remain.
+> 55 of 86 tasks completed (T-001–T-054 + T-BUG-001 done). Phase 6 tasks T-055–T-085 remain.
 > Completed task details are archived in `tasks/completed/`:
 > - [Core Infrastructure](completed/core-infrastructure.md) — T-001, T-003, T-004, T-005, T-014, T-024
 > - [Player & Combat](completed/player-combat.md) — T-002, T-006–T-010, T-015–T-019, T-031, T-039–T-041
@@ -281,7 +281,7 @@
 
 ---
 
-### T-054: Weapon Swap System
+### [DONE] T-054: Weapon Swap System
 
 | Field | Value |
 |-------|-------|
@@ -292,6 +292,8 @@
 | **Description** | Allow player to carry 2 weapons and swap between them. Add `SWAP_WEAPON` action to InputManager (key: 1/2 or scroll wheel). WeaponSystem tracks primary and secondary weapon IDs. Swapping is instant but only allowed in idle/run states. On swap: emit `WEAPON_SWAPPED` event with new weapon data. HUD listens to update weapon indicator (see T-075). |
 | **Acceptance Criteria** | Player can swap between 2 weapons mid-run. Swap blocked during attacks/dodge/heal. Attack stats change immediately on swap. |
 | **Verification** | Equip 2 different weapons. Swap. Verify damage numbers match new weapon. Attempt swap during attack (should be blocked). |
+
+**Implementation Note**: InputManager already had `swapWeapon` bound to F key. Added dual-weapon tracking (primary/secondary) to WeaponSystem with `swapWeapon()`, `equipSecondary()`, `getSecondary()`, `hasSecondary()`. Swap check lives in `PlayerStateMachine.update()` (gated to idle/run states) rather than PlayerController (which handles movement only). WEAPON_SWAPPED event added to EventBus. Game.ts equips edge-spike as default secondary.
 
 ---
 

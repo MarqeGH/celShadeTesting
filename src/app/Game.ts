@@ -112,6 +112,7 @@ export class Game {
 
     // Combat system: EventBus → HitboxManager → StaggerSystem → CombatSystem
     this.eventBus = new EventBus();
+    this.weaponSystem.setEventBus(this.eventBus);
     this.saveManager = new SaveManager(this.eventBus);
     this.hitboxManager = new HitboxManager();
     this.staggerSystem = new StaggerSystem();
@@ -241,8 +242,11 @@ export class Game {
       return this.handleRoomTransition(exit);
     });
 
-    // Load default weapon and start test encounter
-    this.weaponSystem.equipWeapon('fracture-blade')
+    // Load default weapon + secondary, then start test encounter
+    Promise.all([
+      this.weaponSystem.equipWeapon('fracture-blade'),
+      this.weaponSystem.equipSecondary('edge-spike'),
+    ])
       .then(() => this.startTestEncounter())
       .catch((err) => {
         console.warn('[Game] Failed to load weapon, using defaults:', err);

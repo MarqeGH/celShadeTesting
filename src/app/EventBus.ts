@@ -14,6 +14,7 @@ export interface GameEvents {
   PLAYER_DIED: {};
   RUN_STARTED: {};
   RUN_ENDED: { survived: boolean; shardsCollected: number };
+  WEAPON_SWAPPED: { weaponId: string; weaponName: string };
 }
 
 // ── Types ──────────────────────────────────────────────────────────

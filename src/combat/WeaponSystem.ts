@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { WeaponData } from './WeaponData';
 import { STAMINA_COSTS } from '../player/PlayerStats';
+import { EventBus } from '../app/EventBus';
 
 /**
  * Represents an active hitbox — a short-lived arc region in front of the attacker.
@@ -87,7 +88,14 @@ const DEFAULT_WEAPON: WeaponData = {
 export class WeaponSystem {
   private activeHitboxes: ActiveHitbox[] = [];
   private equippedWeapon: WeaponData = DEFAULT_WEAPON;
+  private secondaryWeapon: WeaponData | null = null;
   private cache = new Map<string, WeaponData>();
+  private eventBus: EventBus | null = null;
+
+  /** Set the event bus for emitting weapon swap events. */
+  setEventBus(bus: EventBus): void {
+    this.eventBus = bus;
+  }
 
   /**
    * Load weapon JSON by id. Fetches from data/weapons/{id}.json
@@ -120,6 +128,46 @@ export class WeaponSystem {
    */
   getEquipped(): WeaponData {
     return this.equippedWeapon;
+  }
+
+  /**
+   * Load and set a secondary weapon by id.
+   */
+  async equipSecondary(id: string): Promise<void> {
+    this.secondaryWeapon = await this.loadWeapon(id);
+  }
+
+  /** Get the secondary weapon data, or null if none equipped. */
+  getSecondary(): WeaponData | null {
+    return this.secondaryWeapon;
+  }
+
+  /** True if a secondary weapon is equipped. */
+  hasSecondary(): boolean {
+    return this.secondaryWeapon !== null;
+  }
+
+  /**
+   * Swap primary and secondary weapons. Returns true if swap occurred.
+   * Updates stamina costs to match the newly equipped weapon.
+   */
+  swapWeapon(): boolean {
+    if (!this.secondaryWeapon) return false;
+
+    const prev = this.equippedWeapon;
+    this.equippedWeapon = this.secondaryWeapon;
+    this.secondaryWeapon = prev;
+
+    STAMINA_COSTS.light_attack = this.equippedWeapon.staminaCostLight;
+    STAMINA_COSTS.heavy_attack = this.equippedWeapon.staminaCostHeavy;
+
+    this.eventBus?.emit('WEAPON_SWAPPED', {
+      weaponId: this.equippedWeapon.id,
+      weaponName: this.equippedWeapon.name,
+    });
+
+    console.log(`[WeaponSystem] Swapped to ${this.equippedWeapon.name} (${this.equippedWeapon.id})`);
+    return true;
   }
 
   /**
