@@ -240,8 +240,13 @@ export class Game {
       return this.handleRoomTransition(exit);
     });
 
-    // Start test encounter via EncounterManager
-    this.startTestEncounter();
+    // Load default weapon and start test encounter
+    this.weaponSystem.equipWeapon('fracture-blade')
+      .then(() => this.startTestEncounter())
+      .catch((err) => {
+        console.warn('[Game] Failed to load weapon, using defaults:', err);
+        this.startTestEncounter();
+      });
 
     this.postProcessing = new PostProcessing(
       this.renderer.renderer,

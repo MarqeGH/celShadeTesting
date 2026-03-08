@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { WeaponData } from './WeaponData';
+import { STAMINA_COSTS } from '../player/PlayerStats';
 
 /**
  * Represents an active hitbox — a short-lived arc region in front of the attacker.
@@ -55,12 +57,70 @@ export function testPointInArc(
 let nextAttackId = 1;
 
 /**
- * WeaponSystem manages active hitboxes for player attacks.
- * Hitboxes are created during an attack's active phase and removed after.
- * The system exposes the list of active hitboxes for the combat system to query.
+ * Default weapon used before any JSON is loaded.
+ * Matches fracture-blade.json so gameplay is unchanged until loadWeapon() is called.
+ */
+const DEFAULT_WEAPON: WeaponData = {
+  id: 'fracture-blade',
+  name: 'Fracture Blade',
+  description: 'A jagged shard. Balanced. Reliable.',
+  baseDamage: 18,
+  heavyMultiplier: 2.0,
+  attackSpeed: 1.0,
+  range: 2.5,
+  staggerDamage: 15,
+  comboHits: 2,
+  staminaCostLight: 12,
+  staminaCostHeavy: 25,
+  hitboxShape: 'arc',
+  hitboxSize: { radius: 2.5, angle: 120 },
+  unlockCost: 0,
+};
+
+/**
+ * WeaponSystem manages active hitboxes for player attacks and
+ * tracks the currently equipped weapon data.
+ *
+ * Weapon JSON is loaded via loadWeapon() and cached. Attack states
+ * read getEquipped() each frame for damage, range, timing, etc.
  */
 export class WeaponSystem {
   private activeHitboxes: ActiveHitbox[] = [];
+  private equippedWeapon: WeaponData = DEFAULT_WEAPON;
+  private cache = new Map<string, WeaponData>();
+
+  /**
+   * Load weapon JSON by id. Fetches from data/weapons/{id}.json
+   * and caches the result. Returns the parsed WeaponData.
+   */
+  async loadWeapon(id: string): Promise<WeaponData> {
+    const cached = this.cache.get(id);
+    if (cached) return cached;
+
+    const resp = await fetch(`data/weapons/${id}.json`);
+    if (!resp.ok) throw new Error(`Failed to load weapon: ${id}`);
+    const data: WeaponData = await resp.json();
+    this.cache.set(id, data);
+    return data;
+  }
+
+  /**
+   * Load and equip a weapon by id. Updates stamina costs.
+   */
+  async equipWeapon(id: string): Promise<void> {
+    const data = await this.loadWeapon(id);
+    this.equippedWeapon = data;
+    STAMINA_COSTS.light_attack = data.staminaCostLight;
+    STAMINA_COSTS.heavy_attack = data.staminaCostHeavy;
+  }
+
+  /**
+   * Get the currently equipped weapon data.
+   * Always returns a valid WeaponData (defaults to fracture-blade stats).
+   */
+  getEquipped(): WeaponData {
+    return this.equippedWeapon;
+  }
 
   /**
    * Create a new arc hitbox. Returns the hitbox so the caller can

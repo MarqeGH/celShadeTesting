@@ -1,6 +1,6 @@
 # Task Registry
 
-> 50 of 86 tasks completed (T-001–T-047 + T-049–T-050 + T-BUG-001 done). Phase 6 tasks T-048, T-051–T-085 remain.
+> 51 of 86 tasks completed (T-001–T-047 + T-049–T-051 + T-BUG-001 done). Phase 6 tasks T-048, T-052–T-085 remain.
 > Completed task details are archived in `tasks/completed/`:
 > - [Core Infrastructure](completed/core-infrastructure.md) — T-001, T-003, T-004, T-005, T-014, T-024
 > - [Player & Combat](completed/player-combat.md) — T-002, T-006–T-010, T-015–T-019, T-031, T-039–T-041
@@ -231,7 +231,7 @@
 
 ---
 
-### T-051: Weapon Data Loader
+### [DONE] T-051: Weapon Data Loader
 
 | Field | Value |
 |-------|-------|
@@ -242,6 +242,8 @@
 | **Description** | Create `WeaponData.ts` interface matching `data/weapons/*.json` schema. Extend WeaponSystem with `loadWeapon(id): Promise<WeaponData>` and `getEquipped(): WeaponData`. Refactor LightAttackState and HeavyAttackState to read damage, range, stamina cost, combo hits, attack speed from the equipped WeaponData instead of hardcoded values. Load `fracture-blade.json` as default on game start. |
 | **Acceptance Criteria** | Player attacks use values from weapon JSON. Changing weapon JSON changes in-game behavior. WeaponSystem caches loaded data. |
 | **Verification** | Modify fracture-blade.json damage values. Reload game. Verify damage numbers change. |
+
+**Implementation note**: Created `WeaponData.ts` interface matching weapon JSON schema. Extended `WeaponSystem` with `loadWeapon(id)` (fetch + cache), `equipWeapon(id)` (load + equip + update STAMINA_COSTS), and `getEquipped()` (returns current WeaponData, defaults to fracture-blade stats). Refactored `LightAttackState` and `HeavyAttackState` to read hitbox radius/arc, combo count, and attack speed scaling from `ctx.weaponSystem.getEquipped()` on state enter. Attack speed inversely scales all phase timings. Heavy attack multiplier range derived from `weapon.heavyMultiplier`. Game.ts calls `equipWeapon('fracture-blade')` on startup before first encounter.
 
 ---
 
