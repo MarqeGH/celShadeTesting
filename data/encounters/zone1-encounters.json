@@ -72,5 +72,79 @@
         ]
       }
     ]
+  },
+  {
+    "id": "z1-dancer-ambush",
+    "difficulty": 4,
+    "waves": [
+      {
+        "delay": 0,
+        "spawns": [
+          { "enemyId": "spiral-dancer", "count": 2, "spawnPoint": "nearest" },
+          { "enemyId": "triangle-shard", "count": 1, "spawnPoint": "farthest" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "z1-brute-intro",
+    "difficulty": 6,
+    "waves": [
+      {
+        "delay": 0,
+        "spawns": [
+          { "enemyId": "monolith-brute", "count": 1, "spawnPoint": "farthest" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "z1-mixed-pressure",
+    "difficulty": 7,
+    "waves": [
+      {
+        "delay": 0,
+        "spawns": [
+          { "enemyId": "monolith-brute", "count": 1, "spawnPoint": "farthest" },
+          { "enemyId": "cube-sentinel", "count": 2, "spawnPoint": "nearest" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "z1-gauntlet",
+    "difficulty": 8,
+    "waves": [
+      {
+        "delay": 0,
+        "spawns": [
+          { "enemyId": "triangle-shard", "count": 3, "spawnPoint": "random" }
+        ]
+      },
+      {
+        "delay": 1500,
+        "spawns": [
+          { "enemyId": "spiral-dancer", "count": 2, "spawnPoint": "nearest" }
+        ]
+      },
+      {
+        "delay": 1500,
+        "spawns": [
+          { "enemyId": "monolith-brute", "count": 1, "spawnPoint": "farthest" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "z1-boss",
+    "difficulty": 10,
+    "waves": [
+      {
+        "delay": 0,
+        "spawns": [
+          { "enemyId": "aggregate-boss", "count": 1, "spawnPoint": "farthest" }
+        ]
+      }
+    ]
   }
 ]

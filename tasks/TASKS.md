@@ -1,6 +1,6 @@
 # Task Registry
 
-> 58 of 86 tasks completed (T-001–T-058 + T-BUG-001 done). Phase 6 tasks T-059–T-085 remain.
+> 59 of 86 tasks completed (T-001–T-060 + T-BUG-001 done). Phase 6 tasks T-061–T-085 remain.
 > Completed task details are archived in `tasks/completed/`:
 > - [Core Infrastructure](completed/core-infrastructure.md) — T-001, T-003, T-004, T-005, T-014, T-024
 > - [Player & Combat](completed/player-combat.md) — T-002, T-006–T-010, T-015–T-019, T-031, T-039–T-041
@@ -377,7 +377,7 @@
 
 ---
 
-### T-060: Additional Zone 1 Encounters
+### [DONE] T-060: Additional Zone 1 Encounters
 
 | Field | Value |
 |-------|-------|
@@ -388,6 +388,8 @@
 | **Description** | Add 5 new encounters to zone 1 using all available enemy types. `z1-dancer-ambush` (difficulty 4): 2 spiral dancers + 1 triangle. `z1-brute-intro` (difficulty 6): 1 monolith brute. `z1-mixed-pressure` (difficulty 7): 1 brute + 2 cubes. `z1-gauntlet` (difficulty 8): wave 1: 3 triangles, wave 2: 2 dancers, wave 3: 1 brute. `z1-boss` (difficulty 10): 1 aggregate boss. Register all in Zone1Config encounter pool with appropriate weights. |
 | **Acceptance Criteria** | All 5 new encounters parse and spawn correctly. Zone1Config includes new encounters in pool. Difficulty curve can reach them. |
 | **Verification** | ZoneGenerator produces layouts that include new encounters at appropriate difficulty levels. |
+
+**Implementation note**: Added 5 encounters to `zone1-encounters.json`: `z1-dancer-ambush` (diff 4), `z1-brute-intro` (diff 6), `z1-mixed-pressure` (diff 7), `z1-gauntlet` (diff 8, 3 waves), `z1-boss` (diff 10). Registered all in `Zone1Config` encounter pool. Updated difficulty curve to `[1, 3, 5, 6, 8, 10]` so the zone ramps through all new encounters including the boss finale.
 
 ---
 

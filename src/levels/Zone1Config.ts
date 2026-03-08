@@ -32,13 +32,18 @@ const zone1Config: ZoneConfig = {
     { encounterId: 'z1-intro', difficulty: 1, weight: 2 },
     { encounterId: 'z1-first-real', difficulty: 2, weight: 2 },
     { encounterId: 'z1-ranged-intro', difficulty: 3, weight: 1 },
+    { encounterId: 'z1-dancer-ambush', difficulty: 4, weight: 1 },
     { encounterId: 'z1-wave-fight', difficulty: 5, weight: 1 },
     { encounterId: 'z1-pressure', difficulty: 6, weight: 1 },
+    { encounterId: 'z1-brute-intro', difficulty: 6, weight: 1 },
+    { encounterId: 'z1-mixed-pressure', difficulty: 7, weight: 1 },
+    { encounterId: 'z1-gauntlet', difficulty: 8, weight: 1 },
+    { encounterId: 'z1-boss', difficulty: 10, weight: 1 },
   ],
 
   // Target difficulty at each room index (0-based)
-  // Room 0: easy intro, ramps up through the zone
-  difficultyCurve: [1, 2, 3, 5, 6, 7],
+  // Room 0: easy intro, ramps up through the zone, boss finale
+  difficultyCurve: [1, 3, 5, 6, 8, 10],
 
   // Encounters within ±1.5 of the target difficulty are valid candidates
   difficultyTolerance: 1.5,
