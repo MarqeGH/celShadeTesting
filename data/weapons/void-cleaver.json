@@ -1,0 +1,16 @@
+{
+  "id": "void-cleaver",
+  "name": "Void Cleaver",
+  "description": "A slab of absence given weight. Each swing carves meaning from the air.",
+  "baseDamage": 28,
+  "heavyMultiplier": 2.5,
+  "attackSpeed": 0.7,
+  "range": 3.2,
+  "staggerDamage": 25,
+  "comboHits": 1,
+  "staminaCostLight": 18,
+  "staminaCostHeavy": 35,
+  "hitboxShape": "arc",
+  "hitboxSize": { "radius": 3.2, "angle": 150 },
+  "unlockCost": 80
+}

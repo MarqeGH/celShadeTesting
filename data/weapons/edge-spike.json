@@ -1,0 +1,16 @@
+{
+  "id": "edge-spike",
+  "name": "Edge Spike",
+  "description": "A needle of compressed edge. Strikes fast, reaches short.",
+  "baseDamage": 10,
+  "heavyMultiplier": 1.8,
+  "attackSpeed": 1.4,
+  "range": 1.8,
+  "staggerDamage": 8,
+  "comboHits": 3,
+  "staminaCostLight": 8,
+  "staminaCostHeavy": 18,
+  "hitboxShape": "arc",
+  "hitboxSize": { "radius": 1.8, "angle": 90 },
+  "unlockCost": 50
+}

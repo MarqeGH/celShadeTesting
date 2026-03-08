@@ -1,6 +1,6 @@
 # Task Registry
 
-> 51 of 86 tasks completed (T-001–T-047 + T-049–T-051 + T-BUG-001 done). Phase 6 tasks T-048, T-052–T-085 remain.
+> 53 of 86 tasks completed (T-001–T-047 + T-049–T-053 + T-BUG-001 done). Phase 6 tasks T-048, T-054–T-085 remain.
 > Completed task details are archived in `tasks/completed/`:
 > - [Core Infrastructure](completed/core-infrastructure.md) — T-001, T-003, T-004, T-005, T-014, T-024
 > - [Player & Combat](completed/player-combat.md) — T-002, T-006–T-010, T-015–T-019, T-031, T-039–T-041
@@ -247,7 +247,7 @@
 
 ---
 
-### T-052: Edge Spike Weapon
+### [DONE] T-052: Edge Spike Weapon
 
 | Field | Value |
 |-------|-------|
@@ -259,9 +259,11 @@
 | **Acceptance Criteria** | JSON validates against WeaponData schema. Values are balanced (faster but less damage than Fracture Blade). |
 | **Verification** | Load weapon via WeaponSystem.loadWeapon. Verify all fields parse correctly. |
 
+**Implementation note**: Created `data/weapons/edge-spike.json` conforming to WeaponData schema. All values match task spec exactly. Faster (1.4x attack speed) and shorter range (1.8m) than Fracture Blade (1.0x, 2.5m), lower damage (10 vs 18) but 3-hit combo and lower stamina costs.
+
 ---
 
-### T-053: Void Cleaver Weapon
+### [DONE] T-053: Void Cleaver Weapon
 
 | Field | Value |
 |-------|-------|
@@ -272,6 +274,8 @@
 | **Description** | Create Void Cleaver weapon data: slow, heavy damage. baseDamage 28, heavyMultiplier 2.5, attackSpeed 0.7, range 3.2m, staggerDamage 25, comboHits 1 (no light combo), staminaCostLight 18, staminaCostHeavy 35. hitboxShape "arc", hitboxSize { radius: 3.2, angle: 150 }. unlockCost 80. Description: "A slab of absence given weight. Each swing carves meaning from the air." |
 | **Acceptance Criteria** | JSON validates against WeaponData schema. Values are balanced (high risk/reward, stamina-hungry). |
 | **Verification** | Load weapon via WeaponSystem.loadWeapon. Verify all fields parse correctly. |
+
+**Implementation note**: Created `data/weapons/void-cleaver.json` conforming to WeaponData schema. Slow (0.7x attack speed), long range (3.2m), high damage (28 base, 2.5x heavy = 70), massive stagger (25), but stamina-hungry (18 light / 35 heavy) with no combo (1 hit). 150-degree wide arc. Unlock cost 80.
 
 ---
 
