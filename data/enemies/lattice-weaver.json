@@ -1,0 +1,119 @@
+{
+  "id": "lattice-weaver",
+  "name": "Lattice Weaver",
+  "shape": "wireframe-cube",
+  "stats": {
+    "maxHP": 35,
+    "moveSpeed": 4,
+    "turnSpeed": 150,
+    "poise": 10,
+    "poiseRegenDelay": 3000,
+    "poiseRegenRate": 3
+  },
+  "perception": {
+    "aggroRange": 14,
+    "attackRange": 10,
+    "positionRange": 7,
+    "losRequired": true
+  },
+  "attacks": [
+    {
+      "id": "web_deploy",
+      "name": "Web Deploy",
+      "telegraphDuration": 600,
+      "activeDuration": 200,
+      "recoveryDuration": 800,
+      "damage": 5,
+      "staggerDamage": 0,
+      "range": 10,
+      "hitboxShape": "sphere",
+      "hitboxSize": { "radius": 4 },
+      "movementDuringAttack": null,
+      "zone": {
+        "radius": 4,
+        "damagePerSecond": 5,
+        "duration": 8000,
+        "maxActive": 2
+      }
+    },
+    {
+      "id": "node_burst",
+      "name": "Node Burst",
+      "telegraphDuration": 400,
+      "activeDuration": 100,
+      "recoveryDuration": 600,
+      "damage": 8,
+      "staggerDamage": 4,
+      "range": 8,
+      "hitboxShape": "sphere",
+      "hitboxSize": { "radius": 0.25 },
+      "movementDuringAttack": null,
+      "projectile": {
+        "shape": "sphere",
+        "speed": 8,
+        "lifetime": 2000,
+        "size": 0.15,
+        "count": 6,
+        "homing": false
+      }
+    }
+  ],
+  "drops": {
+    "shards": { "min": 3, "max": 6 },
+    "fragmentChance": 0.1
+  },
+  "fsm": {
+    "initialState": "idle",
+    "states": [
+      {
+        "name": "idle",
+        "transitions": [
+          { "to": "position", "condition": "playerInAggroRange" }
+        ]
+      },
+      {
+        "name": "position",
+        "params": { "targetOffset": 7 },
+        "transitions": [
+          { "to": "web_deploy", "condition": "inPositionAndReady" },
+          { "to": "node_burst", "condition": "playerTooClose" },
+          { "to": "alone_aggro", "condition": "lastEnemyAlive" },
+          { "to": "idle", "condition": "playerOutOfAggroRange" }
+        ]
+      },
+      {
+        "name": "web_deploy",
+        "transitions": [
+          { "to": "cooldown", "condition": "attackComplete" }
+        ]
+      },
+      {
+        "name": "node_burst",
+        "transitions": [
+          { "to": "cooldown", "condition": "attackComplete" }
+        ]
+      },
+      {
+        "name": "cooldown",
+        "params": { "duration": 1200 },
+        "transitions": [
+          { "to": "position", "condition": "cooldownComplete" }
+        ]
+      },
+      {
+        "name": "alone_aggro",
+        "transitions": [
+          { "to": "node_burst", "condition": "attackReady" },
+          { "to": "web_deploy", "condition": "attackReady" }
+        ]
+      },
+      {
+        "name": "staggered",
+        "params": { "duration": 1000 },
+        "transitions": [
+          { "to": "position", "condition": "staggerComplete" }
+        ]
+      }
+    ]
+  }
+}

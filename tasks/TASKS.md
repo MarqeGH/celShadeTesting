@@ -1,6 +1,6 @@
 # Task Registry
 
-> 53 of 86 tasks completed (T-001–T-047 + T-049–T-053 + T-BUG-001 done). Phase 6 tasks T-048, T-054–T-085 remain.
+> 54 of 86 tasks completed (T-001–T-053 + T-BUG-001 done). Phase 6 tasks T-054–T-085 remain.
 > Completed task details are archived in `tasks/completed/`:
 > - [Core Infrastructure](completed/core-infrastructure.md) — T-001, T-003, T-004, T-005, T-014, T-024
 > - [Player & Combat](completed/player-combat.md) — T-002, T-006–T-010, T-015–T-019, T-031, T-039–T-041
@@ -185,7 +185,7 @@
 
 ---
 
-### T-048: Lattice Weaver Enemy
+### [DONE] T-048: Lattice Weaver Enemy
 
 | Field | Value |
 |-------|-------|
@@ -196,6 +196,8 @@
 | **Description** | Implement the Lattice Weaver — area denial support enemy. EdgesGeometry wireframe cube (~1m, teal #44aaaa). Floats 0.5m above ground (sinusoidal bob). FSM: idle → position (moves to strategic point between player and other enemies) → web_deploy (600ms telegraph, places 4m radius damage zone on ground, 5 dmg/s, 8s duration, max 2 zones) → node_burst (400ms telegraph, ring of 6 small projectiles, 8 dmg each) → cooldown → alone_aggro (speeds up when last enemy alive) → staggered. HP 35. |
 | **Acceptance Criteria** | Enemy positions strategically, deploys visible ground hazard zones, fires ring projectiles, zones deal damage over time to player, becomes aggressive when alone. |
 | **Verification** | Spawn with other enemies. Verify zone placement, DOT damage, aggro behavior change when alone. |
+
+**Implementation note**: EdgesGeometry wireframe cube (~1m) with cel material + LineSegments overlay at teal #44aaaa. Sinusoidal bob (0.15m amplitude, 2Hz) at 0.5m float height. 7 FSM states: idle, position (maintains 7m range, chooses attacks on 2.5s timer), web_deploy (600ms telegraph → deploys 4m radius ground zone), node_burst (400ms telegraph → fires ring of 6 sphere projectiles), cooldown (1.2s), alone_aggro (1.5x speed, 1.5s attack interval when last alive), staggered (1s). Zone system: max 2 active zones, 5dmg/s via hitbox recycling every 1s (new attackInstanceId for repeated DOT), 8s duration with pulse opacity + fade-out. Projectile ObjectPool (8 slots). EncounterManager passes scene ref and aliveCount callback via setScene()/setAliveCountFn(). T-061 dependency soft — zones are self-contained enemy mechanics, not HazardSystem.
 
 ---
 

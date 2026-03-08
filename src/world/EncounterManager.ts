@@ -3,6 +3,7 @@ import { BaseEnemy } from '../enemies/BaseEnemy';
 import { EnemyFactory } from '../enemies/EnemyFactory';
 import { CubeSentinel } from '../enemies/cube-sentinel/CubeSentinel';
 import { AggregateBoss } from '../enemies/aggregate-boss/AggregateBoss';
+import { LatticeWeaver } from '../enemies/lattice-weaver/LatticeWeaver';
 import { CombatSystem } from '../combat/CombatSystem';
 import { StaggerSystem } from '../combat/StaggerSystem';
 import { HitboxManager } from '../combat/HitboxManager';
@@ -240,6 +241,10 @@ export class EncounterManager {
             enemy.setScene(this.scene);
             enemy.setSpawnSystems(this.combatSystem, this.staggerSystem);
             enemy.preloadMinionData();
+          }
+          if (enemy instanceof LatticeWeaver) {
+            enemy.setScene(this.scene);
+            enemy.setAliveCountFn(() => this.getAliveCount());
           }
 
           this.scene.add(enemy.group);

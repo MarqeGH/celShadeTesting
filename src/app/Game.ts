@@ -22,6 +22,7 @@ import '../enemies/cube-sentinel/CubeSentinel'; // side-effect: registers in Ene
 import '../enemies/spiral-dancer/SpiralDancer'; // side-effect: registers in EnemyRegistry
 import '../enemies/monolith-brute/MonolithBrute'; // side-effect: registers in EnemyRegistry
 import '../enemies/aggregate-boss/AggregateBoss'; // side-effect: registers in EnemyRegistry
+import '../enemies/lattice-weaver/LatticeWeaver'; // side-effect: registers in EnemyRegistry
 import { EncounterManager, EncounterData } from '../world/EncounterManager';
 import { HUD } from '../ui/HUD';
 import { UIManager } from '../ui/UIManager';
