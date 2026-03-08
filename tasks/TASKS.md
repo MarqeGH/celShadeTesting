@@ -1,6 +1,6 @@
 # Task Registry
 
-> 62 of 86 tasks completed (T-001–T-063 + T-BUG-001 done). Phase 6 tasks T-064–T-085 remain.
+> 63 of 86 tasks completed (T-001–T-064 + T-BUG-001 done). Phase 6 tasks T-065–T-085 remain.
 > Completed task details are archived in `tasks/completed/`:
 > - [Core Infrastructure](completed/core-infrastructure.md) — T-001, T-003, T-004, T-005, T-014, T-024
 > - [Player & Combat](completed/player-combat.md) — T-002, T-006–T-010, T-015–T-019, T-031, T-039–T-041
@@ -440,7 +440,7 @@
 
 ---
 
-### T-064: Run Completion Flow
+### [DONE] T-064: Run Completion Flow
 
 | Field | Value |
 |-------|-------|
@@ -451,6 +451,8 @@
 | **Description** | When the last room in a zone layout is cleared (ROOM_CLEARED and room index == layout length), show a victory screen. VictoryScreen: "Zone Cleared" title (green tint), run stats (same layout as death screen), "Shards Kept (100%)" (survived runs keep all shards). Button: "Continue" (for future zone chaining) or "Return". Call RunState.endRun(true) with survived=true. |
 | **Acceptance Criteria** | Clearing the final room shows victory screen. Survived runs keep 100% shards. Stats display correctly. |
 | **Verification** | Play through all rooms in a zone. Verify victory screen appears on final room clear. |
+
+**Implementation note:** Created `src/ui/VictoryScreen.ts` mirroring death screen pattern with green theme. Fixed `RunState.endRun()` to keep 100% shards when `survived=true`. Victory screen triggers in `Game.handleRoomTransition()` when `nextIndex >= layout.rooms.length`. "Return" button reuses existing `handleReturnToHub()` flow.
 
 ---
 

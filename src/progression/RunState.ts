@@ -67,7 +67,9 @@ export class RunState {
     this.unsubscribe();
     this.running = false;
 
-    const shardsKept = Math.floor(this.totalShards * 0.5);
+    const shardsKept = survived
+      ? this.totalShards
+      : Math.floor(this.totalShards * 0.5);
 
     const rewards: RunRewards = {
       shardsCollected: this.totalShards,

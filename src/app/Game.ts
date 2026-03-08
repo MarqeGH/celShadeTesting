@@ -37,6 +37,7 @@ import { WeaponPickup } from '../interactions/WeaponPickup';
 import { MenuSystem } from '../ui/MenuSystem';
 import { PauseMenu } from '../ui/PauseMenu';
 import { TitleScreen } from '../ui/TitleScreen';
+import { VictoryScreen } from '../ui/VictoryScreen';
 import { RunState } from '../progression/RunState';
 import { ParticleSystem } from '../rendering/ParticleSystem';
 import { SaveManager } from '../save/SaveManager';
@@ -80,6 +81,7 @@ export class Game {
   private menuSystem: MenuSystem;
   private pauseMenu: PauseMenu;
   private titleScreen: TitleScreen;
+  private victoryScreen: VictoryScreen;
   private particleSystem: ParticleSystem;
   private runState: RunState;
   private saveManager: SaveManager;
@@ -219,6 +221,12 @@ export class Game {
       container,
       this.eventBus,
       this.runState,
+      () => this.handleReturnToHub(),
+    );
+
+    // Victory screen
+    this.victoryScreen = new VictoryScreen(
+      container,
       () => this.handleReturnToHub(),
     );
 
@@ -513,8 +521,9 @@ export class Game {
     // Check if zone is complete
     if (nextIndex >= this.currentLayout.rooms.length) {
       console.log('[Game] Zone complete! All rooms cleared.');
-      // Restart the zone for now (future: victory screen)
-      await this.startZoneRun(this.currentLayout.zoneId);
+      const rewards = this.runState.endRun(true);
+      this.uiManager.setState('menu');
+      this.victoryScreen.show(rewards);
       return this.playerModel.mesh.position.clone();
     }
 
@@ -534,6 +543,9 @@ export class Game {
    * Resets player, encounter, and restarts a fresh run.
    */
   private handleReturnToHub(): void {
+    // Hide victory screen if active
+    this.victoryScreen.hide();
+
     // Reset player state
     this.playerStats.reset();
     this.playerStateMachine.fsm.setState('idle');
@@ -612,6 +624,7 @@ export class Game {
     this.damageNumbers.dispose();
     this.titleScreen.dispose();
     this.menuSystem.dispose();
+    this.victoryScreen.dispose();
     this.pauseMenu.dispose();
     this.saveManager.dispose();
     this.runState.dispose();
