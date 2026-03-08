@@ -106,3 +106,601 @@
 - Add `[BLOCKED: reason]` if stuck
 - New bugs: `T-BUG-{number}`
 - Branch per task: `feat/T-{ID}-{short-name}`
+
+---
+
+## Development Gap Analysis
+
+> Produced at 43/46 tasks complete. The game has a functional combat loop with 2 enemy types, wave encounters, zone progression scaffolding, and a death/retry cycle. The following gaps prevent the game from being a satisfying playable experience.
+
+### Critical Gaps
+| Gap | Impact | Current State |
+|-----|--------|---------------|
+| **Enemy Variety** | Runs feel identical — only 2 of 6 designed enemies exist. No bosses. | TriangleShard + CubeSentinel only |
+| **Weapons** | No player choice or build variety — 1 weapon, no loading from data, no swapping | Fracture Blade hardcoded |
+| **Audio** | Silent game — no SFX, music, or ambient. Pillar 1 requires audio telegraphs | Zero audio code exists |
+| **Game Flow** | No title screen, no hub, no pause. Game boots directly into combat | Death screen only |
+
+### Major Gaps
+| Gap | Impact | Current State |
+|-----|--------|---------------|
+| **Room Content** | 1 room JSON out of 5+ designed per zone. Every room is the same square | atrium-room-square only |
+| **Zone Integration** | ZoneGenerator exists but isn't wired into room transitions | handleRoomTransition hardcoded |
+| **Environment Hazards** | Room schema supports hazards but no system processes them | No HazardSystem |
+| **Meta-Progression** | Save/load works but no unlock shop, no hub, no spending of meta-currency | SaveManager + RunState only |
+| **Encounter Variety** | 5 encounters for zone 1 using 2 enemy types. No difficulty 7+ encounters | data/encounters/zone1-encounters.json |
+
+### Moderate Gaps
+| Gap | Impact | Current State |
+|-----|--------|---------------|
+| **UI Missing** | No pause menu, settings, boss health bar, weapon indicator, controls help | HUD + death screen only |
+| **Damage Pipeline** | No defense/armor, no critical hits, parry buff not in calc | calculateDamage is base * multiplier |
+| **Combat AI** | Max-2-attackers rule from spec not enforced. All enemies rush player | Each enemy AI is independent |
+| **Polish** | No low-HP vignette, no screen flash on hit, death anim is basic | Particles + shake only |
+
+---
+
+## Phase 6 — Gameplay Expansion
+
+> 40 tasks expanding the game from vertical-slice to full playable experience.
+> Enemy content, weapons, rooms, game flow, audio, meta-progression, UI, and polish.
+
+---
+
+### T-046: Spiral Dancer Enemy
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `gameplay` + `data` |
+| **Priority** | P1 |
+| **Depends On** | T-020, T-021 |
+| **Target Files** | `src/enemies/spiral-dancer/SpiralDancer.ts`, `src/enemies/spiral-dancer/states.ts`, `data/enemies/spiral-dancer.json` |
+| **Description** | Implement the Spiral Dancer — fast melee skirmisher that orbits the player. Helix mesh (TubeGeometry along spiral curve, ~1.5m tall, purple #9944cc). FSM: idle → orbit (circle player at 5–7m, 8 m/s) → dart_strike (350ms telegraph, 150ms dash through player, 500ms recovery, 12 dmg) → whip_lash (300ms telegraph, 200ms 3m arc, 8 dmg) → cooldown → staggered. Register in EnemyRegistry. Side-effect import in Game.ts. |
+| **Acceptance Criteria** | Enemy spawns, orbits player, performs both attacks with visible telegraphs, takes damage, dies with shatter effect. |
+| **Verification** | Spawn via debug encounter. Observe orbit movement and attack patterns. Verify hitbox alignment. |
+
+---
+
+### T-047: Monolith Brute Enemy
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `gameplay` + `data` |
+| **Priority** | P1 |
+| **Depends On** | T-020, T-021 |
+| **Target Files** | `src/enemies/monolith-brute/MonolithBrute.ts`, `src/enemies/monolith-brute/states.ts`, `data/enemies/monolith-brute.json` |
+| **Description** | Implement the Monolith Brute — slow heavy tank. BoxGeometry 0.8×2.5×0.4m, dark stone #555566. FSM: idle → chase (2 m/s) → slam (800ms telegraph, 300ms active, 3m radius, 30 dmg, 1000ms recovery) → sweep (600ms telegraph, 400ms 180° arc 3.5m, 20 dmg) → stomp (500ms telegraph, 200ms 2m radius, 15 dmg) → cooldown → staggered (expose glowing crack, 1.5x damage taken for 2s). HP 120, poise 100. |
+| **Acceptance Criteria** | Enemy advances slowly, picks from 3 attacks, long telegraphs are clearly visible, stagger exposes vulnerability window. |
+| **Verification** | Spawn via debug encounter. Test all 3 attacks. Verify stagger vulnerability applies 1.5x damage. |
+
+---
+
+### T-048: Lattice Weaver Enemy
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `gameplay` + `data` |
+| **Priority** | P2 |
+| **Depends On** | T-020, T-021, T-061 |
+| **Target Files** | `src/enemies/lattice-weaver/LatticeWeaver.ts`, `src/enemies/lattice-weaver/states.ts`, `data/enemies/lattice-weaver.json` |
+| **Description** | Implement the Lattice Weaver — area denial support enemy. EdgesGeometry wireframe cube (~1m, teal #44aaaa). Floats 0.5m above ground (sinusoidal bob). FSM: idle → position (moves to strategic point between player and other enemies) → web_deploy (600ms telegraph, places 4m radius damage zone on ground, 5 dmg/s, 8s duration, max 2 zones) → node_burst (400ms telegraph, ring of 6 small projectiles, 8 dmg each) → cooldown → alone_aggro (speeds up when last enemy alive) → staggered. HP 35. |
+| **Acceptance Criteria** | Enemy positions strategically, deploys visible ground hazard zones, fires ring projectiles, zones deal damage over time to player, becomes aggressive when alone. |
+| **Verification** | Spawn with other enemies. Verify zone placement, DOT damage, aggro behavior change when alone. |
+
+---
+
+### T-049: Boss — The Aggregate (Data + Base)
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `gameplay` + `data` |
+| **Priority** | P2 |
+| **Depends On** | T-020, T-021, T-022 |
+| **Target Files** | `src/enemies/aggregate-boss/AggregateBoss.ts`, `src/enemies/aggregate-boss/states.ts`, `data/enemies/aggregate-boss.json` |
+| **Description** | Implement Zone 1 boss: The Aggregate — a cluster of fused triangles forming a shifting humanoid silhouette. Mesh: group of 12–16 ConeGeometry triangles arranged in humanoid shape, dark red #993333. HP 300. 3 phases based on HP thresholds: Phase 1 (100–66% HP): melee swipes (500ms telegraph, 250ms active, 20 dmg, 3m arc). Phase 2 (66–33%): adds a charge attack (700ms telegraph, 8m dash, 25 dmg) + triangle scatter (launches 4 triangles outward). Phase 3 (<33%): faster attacks, reduced telegraph by 100ms. No adds-splitting in this task (see T-050). |
+| **Acceptance Criteria** | Boss spawns with cluster mesh, transitions between 3 phases at HP thresholds, each phase adds attacks, telegraphs are clearly visible, boss has unique death effect. |
+| **Verification** | Spawn in boss arena room. Fight through all 3 phases. Verify phase transitions. Check damage values. |
+
+---
+
+### T-050: Boss — The Aggregate (Split Mechanic)
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `gameplay` |
+| **Priority** | P3 |
+| **Depends On** | T-049 |
+| **Target Files** | `src/enemies/aggregate-boss/AggregateBoss.ts`, `src/enemies/aggregate-boss/states.ts` |
+| **Description** | Add split/reform mechanic to The Aggregate. In Phase 2+, on stagger: boss splits into 3–5 independent TriangleShard minions for 8 seconds. Minions have 15 HP each. After 8s or all minions killed, boss reforms at center of remaining minions. Boss HP does not regen during split. If boss HP < 33% during split, reforms immediately after 1 minion killed. Visual: triangles detach and scatter, reform animates them back together. |
+| **Acceptance Criteria** | Boss splits on stagger, minions are real TriangleShards that can be fought, boss reforms after timer or all killed, HP preserved across split/reform. |
+| **Verification** | Trigger stagger in Phase 2. Verify minion spawning. Kill some minions, verify reform. |
+
+---
+
+### T-051: Weapon Data Loader
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `gameplay` + `data` |
+| **Priority** | P1 |
+| **Depends On** | T-024, T-017, T-040 |
+| **Target Files** | `src/combat/WeaponSystem.ts`, `src/combat/WeaponData.ts`, `src/player/states/LightAttackState.ts`, `src/player/states/HeavyAttackState.ts` |
+| **Description** | Create `WeaponData.ts` interface matching `data/weapons/*.json` schema. Extend WeaponSystem with `loadWeapon(id): Promise<WeaponData>` and `getEquipped(): WeaponData`. Refactor LightAttackState and HeavyAttackState to read damage, range, stamina cost, combo hits, attack speed from the equipped WeaponData instead of hardcoded values. Load `fracture-blade.json` as default on game start. |
+| **Acceptance Criteria** | Player attacks use values from weapon JSON. Changing weapon JSON changes in-game behavior. WeaponSystem caches loaded data. |
+| **Verification** | Modify fracture-blade.json damage values. Reload game. Verify damage numbers change. |
+
+---
+
+### T-052: Edge Spike Weapon
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `data` |
+| **Priority** | P2 |
+| **Depends On** | T-051 |
+| **Target Files** | `data/weapons/edge-spike.json` |
+| **Description** | Create Edge Spike weapon data: fast, short-range. baseDamage 10, heavyMultiplier 1.8, attackSpeed 1.4, range 1.8m, staggerDamage 8, comboHits 3 (3-hit light combo), staminaCostLight 8, staminaCostHeavy 18. hitboxShape "arc", hitboxSize { radius: 1.8, angle: 90 }. unlockCost 50. Description: "A needle of compressed edge. Strikes fast, reaches short." |
+| **Acceptance Criteria** | JSON validates against WeaponData schema. Values are balanced (faster but less damage than Fracture Blade). |
+| **Verification** | Load weapon via WeaponSystem.loadWeapon. Verify all fields parse correctly. |
+
+---
+
+### T-053: Void Cleaver Weapon
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `data` |
+| **Priority** | P2 |
+| **Depends On** | T-051 |
+| **Target Files** | `data/weapons/void-cleaver.json` |
+| **Description** | Create Void Cleaver weapon data: slow, heavy damage. baseDamage 28, heavyMultiplier 2.5, attackSpeed 0.7, range 3.2m, staggerDamage 25, comboHits 1 (no light combo), staminaCostLight 18, staminaCostHeavy 35. hitboxShape "arc", hitboxSize { radius: 3.2, angle: 150 }. unlockCost 80. Description: "A slab of absence given weight. Each swing carves meaning from the air." |
+| **Acceptance Criteria** | JSON validates against WeaponData schema. Values are balanced (high risk/reward, stamina-hungry). |
+| **Verification** | Load weapon via WeaponSystem.loadWeapon. Verify all fields parse correctly. |
+
+---
+
+### T-054: Weapon Swap System
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `gameplay` |
+| **Priority** | P2 |
+| **Depends On** | T-051 |
+| **Target Files** | `src/combat/WeaponSystem.ts`, `src/app/InputManager.ts`, `src/player/PlayerController.ts` |
+| **Description** | Allow player to carry 2 weapons and swap between them. Add `SWAP_WEAPON` action to InputManager (key: 1/2 or scroll wheel). WeaponSystem tracks primary and secondary weapon IDs. Swapping is instant but only allowed in idle/run states. On swap: emit `WEAPON_SWAPPED` event with new weapon data. HUD listens to update weapon indicator (see T-075). |
+| **Acceptance Criteria** | Player can swap between 2 weapons mid-run. Swap blocked during attacks/dodge/heal. Attack stats change immediately on swap. |
+| **Verification** | Equip 2 different weapons. Swap. Verify damage numbers match new weapon. Attempt swap during attack (should be blocked). |
+
+---
+
+### T-055: Weapon Pickup During Runs
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `gameplay` + `interactions` |
+| **Priority** | P3 |
+| **Depends On** | T-054 |
+| **Target Files** | `src/interactions/WeaponPickup.ts`, `src/interactions/PickupSystem.ts`, `src/world/EncounterManager.ts` |
+| **Description** | After clearing a room, spawn a random weapon pickup from the unlock pool. WeaponPickup: floating weapon mesh with glow, press E to pick up. If player has 2 weapons, picking up replaces currently equipped (dropped weapon despawns). Spawn at room center. Weapon type randomly selected from unlocked weapons. Only spawns if `Math.random() < 0.4` (40% chance per room clear). |
+| **Acceptance Criteria** | Weapon pickup appears after some room clears. Player can interact to equip. Old weapon replaced if inventory full. |
+| **Verification** | Clear 5+ rooms. Verify weapon pickups appear ~40% of the time. Pick up weapon, verify it equips. |
+
+---
+
+### T-056: Room Module — atrium-hall-straight
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `data` + `world` |
+| **Priority** | P1 |
+| **Depends On** | T-027 |
+| **Target Files** | `data/rooms/atrium-hall-straight.json` |
+| **Description** | Create JSON for the tutorial corridor room. 20m×8m floor, 3m walls. 2 spawn points at mid-corridor flanks. Player entry at south. Single exit at north. 2 decorative column props at 1/3 and 2/3 length. No hazards. Zone: "shattered-atrium". This is the opening room for Zone 1 runs. |
+| **Acceptance Criteria** | JSON conforms to RoomModuleData schema. RoomAssembler builds it without errors. Spawn points are reachable. |
+| **Verification** | Load via AssetLoader + RoomAssembler. Walk through room. Verify dimensions and spawn positions. |
+
+---
+
+### T-057: Room Module — atrium-junction-T
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `data` + `world` |
+| **Priority** | P2 |
+| **Depends On** | T-027 |
+| **Target Files** | `data/rooms/atrium-junction-T.json` |
+| **Description** | Create JSON for the T-intersection room. 12m×16m floor, 3m walls. T-shape: main corridor 12m wide, branch extends 8m to the right. 3 spawn points (center, left alcove, right branch end). Player entry at south. 2 exits: north + east. 1 static-discharge hazard at the junction corner (radius 1.5m, 5 dmg/tick, 1s interval). |
+| **Acceptance Criteria** | JSON conforms to RoomModuleData. Room builds correctly with T-shaped walls. Both exits functional. |
+| **Verification** | Load room. Walk all paths. Verify spawn point accessibility and exit door positions. |
+
+---
+
+### T-058: Room Module — atrium-boss-arena
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `data` + `world` |
+| **Priority** | P2 |
+| **Depends On** | T-027 |
+| **Target Files** | `data/rooms/atrium-boss-arena.json` |
+| **Description** | Create JSON for the Zone 1 boss arena. 20m×20m open floor, 3m walls. 4 corner pillars (props). Single spawn point at room center. Player entry at south. No exits (boss arena — game handles zone transition on boss death). No hazards. Zone: "shattered-atrium". |
+| **Acceptance Criteria** | JSON conforms to schema. Large open room with 4 pillar props. Spawn point centered. |
+| **Verification** | Load room. Verify dimensions suit boss combat (enough space for dodge rolls and boss attacks). |
+
+---
+
+### T-059: Zone Generator Integration
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `world` |
+| **Priority** | P1 |
+| **Depends On** | T-030, T-056, T-057, T-058 |
+| **Target Files** | `src/app/Game.ts`, `src/world/ZoneGenerator.ts` |
+| **Description** | Wire ZoneGenerator into Game.ts room transitions. On game start: generate a ZoneLayout via `ZoneGenerator.generate('shattered-atrium')`. Store the layout in Game. `handleRoomTransition` loads the next room/encounter from the layout instead of hardcoded values. Track current room index via RunState.advanceRoom(). Load encounter JSON from `data/encounters/zone1-encounters.json` matching the layout's encounterId. On last room: spawn boss encounter (or final wave). |
+| **Acceptance Criteria** | Each run generates a different room sequence. Rooms load from layout. Encounters match layout. Room index advances correctly. |
+| **Verification** | Start 3 runs. Verify room order differs. Check console logs show ZoneGenerator output. |
+
+---
+
+### T-060: Additional Zone 1 Encounters
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `data` |
+| **Priority** | P1 |
+| **Depends On** | T-046, T-047 |
+| **Target Files** | `data/encounters/zone1-encounters.json`, `src/levels/Zone1Config.ts` |
+| **Description** | Add 5 new encounters to zone 1 using all available enemy types. `z1-dancer-ambush` (difficulty 4): 2 spiral dancers + 1 triangle. `z1-brute-intro` (difficulty 6): 1 monolith brute. `z1-mixed-pressure` (difficulty 7): 1 brute + 2 cubes. `z1-gauntlet` (difficulty 8): wave 1: 3 triangles, wave 2: 2 dancers, wave 3: 1 brute. `z1-boss` (difficulty 10): 1 aggregate boss. Register all in Zone1Config encounter pool with appropriate weights. |
+| **Acceptance Criteria** | All 5 new encounters parse and spawn correctly. Zone1Config includes new encounters in pool. Difficulty curve can reach them. |
+| **Verification** | ZoneGenerator produces layouts that include new encounters at appropriate difficulty levels. |
+
+---
+
+### T-061: Environment Hazard System
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `world` + `gameplay` |
+| **Priority** | P2 |
+| **Depends On** | T-027 |
+| **Target Files** | `src/world/HazardSystem.ts`, `src/world/RoomAssembler.ts` |
+| **Description** | Create HazardSystem that processes hazard placements from room JSON. HazardSystem.spawn(type, position, params) creates visual + collision for each type. Initial types: `static-discharge` (pulsing blue spark sphere, damages player in radius every tick interval) and `loose-tile` (floor section that drops 1s after step, respawns after 2s). RoomAssembler calls HazardSystem.spawn() for each hazard in room data. HazardSystem.update(dt, playerPos) checks collisions. Emit `PLAYER_DAMAGED` for hazard hits. |
+| **Acceptance Criteria** | Hazards spawn from room JSON. Static discharge damages player periodically. Loose tiles collapse visually and respawn. Hazards cleaned up on room dispose. |
+| **Verification** | Load atrium-room-square (has static-discharge hazard). Walk into hazard zone. Verify damage applied. |
+
+---
+
+### T-062: Title Screen
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `UI` |
+| **Priority** | P1 |
+| **Depends On** | None |
+| **Target Files** | `src/ui/TitleScreen.ts`, `src/ui/UIManager.ts` |
+| **Description** | HTML/CSS overlay title screen shown on game launch. Game title "CELTEST" in large sparse lettering (letter-spacing 24px, color #c0c0c0, weight 100). Subtitle "A world of collapsed forms" in small text below. "Press any key to start" pulsing at bottom. Background: the Three.js scene renders a slowly rotating empty arena with ambient lighting (no player/enemies). On key press: fade out 500ms → transition to hub or directly to run start. Add `title` state to UIManager. |
+| **Acceptance Criteria** | Title screen displays on game load. Scene renders behind it. Key press transitions to gameplay. |
+| **Verification** | Load game. Verify title screen shows. Press key. Verify transition to gameplay. |
+
+---
+
+### T-063: Pause Menu
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `UI` |
+| **Priority** | P1 |
+| **Depends On** | None |
+| **Target Files** | `src/ui/PauseMenu.ts`, `src/ui/UIManager.ts`, `src/app/GameLoop.ts`, `src/app/Game.ts` |
+| **Description** | Escape key toggles pause. PauseMenu: semi-transparent dark overlay with "PAUSED" title, buttons: "Resume", "Settings" (placeholder), "Quit Run" (ends run, returns to hub/restart). GameLoop.pause()/resume() stops update loop but keeps rendering at low rate. InputManager ignores gameplay input while paused. UIManager adds `paused` state. Escape while paused resumes. |
+| **Acceptance Criteria** | Escape pauses game and shows overlay. Game loop stops. Resume returns to gameplay. Quit Run ends the run. |
+| **Verification** | During combat, press Escape. Verify enemies freeze. Press Resume. Verify combat resumes. |
+
+---
+
+### T-064: Run Completion Flow
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `UI` + `meta` |
+| **Priority** | P2 |
+| **Depends On** | T-059 |
+| **Target Files** | `src/ui/VictoryScreen.ts`, `src/ui/UIManager.ts`, `src/app/Game.ts` |
+| **Description** | When the last room in a zone layout is cleared (ROOM_CLEARED and room index == layout length), show a victory screen. VictoryScreen: "Zone Cleared" title (green tint), run stats (same layout as death screen), "Shards Kept (100%)" (survived runs keep all shards). Button: "Continue" (for future zone chaining) or "Return". Call RunState.endRun(true) with survived=true. |
+| **Acceptance Criteria** | Clearing the final room shows victory screen. Survived runs keep 100% shards. Stats display correctly. |
+| **Verification** | Play through all rooms in a zone. Verify victory screen appears on final room clear. |
+
+---
+
+### T-065: Hub Scene
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `world` + `UI` |
+| **Priority** | P2 |
+| **Depends On** | T-062, T-063 |
+| **Target Files** | `src/world/HubScene.ts`, `src/app/Game.ts`, `src/ui/UIManager.ts` |
+| **Description** | Simple hub area between runs. Small 10m×10m room with cel-shaded floor. Player can walk around. Contains: a glowing portal mesh (TorusGeometry, pulsing emissive) — press E to start run. Meta-currency counter visible in HUD. Future: shop pedestal (T-068). Game.ts manages hub→run→hub transitions. UIManager `hub` state shows shard count but hides stamina/HP. Player position resets to hub center on return. |
+| **Acceptance Criteria** | Hub loads after death screen "Return" or on game start (post-title). Player walks in hub. Portal starts a run. |
+| **Verification** | Die in a run. Click Return. Verify hub loads. Walk to portal. Press E. Verify run starts. |
+
+---
+
+### T-066: Unlock Registry and Data
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `meta` + `data` |
+| **Priority** | P2 |
+| **Depends On** | T-042 |
+| **Target Files** | `src/progression/UnlockRegistry.ts`, `data/progression/unlocks.json` |
+| **Description** | Create UnlockRegistry that loads unlock definitions from JSON. Each unlock: id, name, description, category (weapon/ability/stat/cosmetic), cost, prerequisite, effect. Create `data/progression/unlocks.json` with 8 initial unlocks: 2 weapons (edge-spike, void-cleaver), 3 stat bonuses (+10 HP ×2, +10 stamina), 1 ability (dash_strike — placeholder), 2 cosmetic (placeholder). UnlockRegistry exposes: `getAll()`, `getAvailable(playerUnlocks)`, `getCost(id)`, `getEffect(id)`. |
+| **Acceptance Criteria** | Unlock data loads and parses. Registry correctly filters available unlocks based on prerequisites and already-owned. |
+| **Verification** | Call getAvailable with empty unlocks list. Verify starter unlocks shown. Add prerequisite unlock, verify gated items appear. |
+
+---
+
+### T-067: Hub Shop UI
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `UI` + `meta` |
+| **Priority** | P3 |
+| **Depends On** | T-065, T-066 |
+| **Target Files** | `src/ui/ShopUI.ts`, `src/app/Game.ts` |
+| **Description** | In the hub, a second interactable (glowing pedestal mesh) opens the shop overlay. ShopUI: HTML/CSS panel listing available unlocks with name, description, cost. "Buy" button per item. Grayed out if insufficient currency or prerequisites not met. On purchase: SaveManager.spendCurrency() + SaveManager.addUnlock(). Purchased items show checkmark. Close shop with Escape or "Close" button. Display current meta-currency balance at top of panel. |
+| **Acceptance Criteria** | Shop opens from hub interaction. Shows available unlocks. Purchase deducts currency and persists unlock. Already-owned items are marked. |
+| **Verification** | Accumulate shards across 2+ runs. Open shop. Purchase an unlock. Reload page. Verify unlock persists. |
+
+---
+
+### T-068: Meta-Progression Stat Application
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `meta` + `gameplay` |
+| **Priority** | P3 |
+| **Depends On** | T-066 |
+| **Target Files** | `src/progression/MetaProgression.ts`, `src/player/PlayerStats.ts`, `src/app/Game.ts` |
+| **Description** | Create MetaProgression class that reads unlocked stat bonuses from SaveManager and applies them to PlayerStats at run start. On RunState.startRun(): iterate unlocks with `type: "stat_bonus"`, sum bonuses per stat (maxHP, maxStamina, etc.), apply to PlayerStats. Cap total bonuses at +20% of base values (per CLAUDE.md design constraint). MetaProgression.getAppliedBonuses() returns summary for debug/UI. |
+| **Acceptance Criteria** | Purchasing HP unlock increases player HP on next run. Bonuses cap at +20%. Bonuses applied fresh each run start. |
+| **Verification** | Buy 2 HP unlocks (+10 each). Start run. Verify HP bar shows 120 max. |
+
+---
+
+### T-069: Audio Manager Foundation
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `infrastructure` |
+| **Priority** | P1 |
+| **Depends On** | T-004 |
+| **Target Files** | `src/audio/AudioManager.ts`, `src/audio/SFXRegistry.ts`, `src/app/Game.ts` |
+| **Description** | Create AudioManager using Howler.js. SFXRegistry maps string IDs to audio file paths. AudioManager: `playSFX(id, volume?)`, `playMusic(id, loop?)`, `stopMusic()`, `setMasterVolume(v)`, `setSFXVolume(v)`, `setMusicVolume(v)`. Reads initial volumes from SaveManager settings. Subscribe to EventBus: `PLAYER_DAMAGED` → hit SFX, `ENEMY_DAMAGED` → hit SFX, `ENEMY_DIED` → death SFX, `SHARD_COLLECTED` → collect SFX. For now, register placeholder paths — actual audio files added in T-070. Wire into Game.ts constructor. |
+| **Acceptance Criteria** | AudioManager initializes without errors. EventBus subscriptions are active. Volume controls work. Missing audio files fail gracefully (warn, don't crash). |
+| **Verification** | Game boots with AudioManager. No console errors. Volume settings load from save data. |
+
+---
+
+### T-070: Combat Sound Effects
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `polish` |
+| **Priority** | P2 |
+| **Depends On** | T-069 |
+| **Target Files** | `assets/audio/sfx/`, `src/audio/SFXRegistry.ts` |
+| **Description** | Create or source (CC0/generated) minimal audio files for core combat: `attack-whoosh.mp3` (light + heavy attack swing), `hit-impact.mp3` (damage dealt to enemy), `player-hit.mp3` (player takes damage), `parry-clang.mp3` (successful parry), `enemy-death.mp3` (shatter sound), `shard-collect.mp3` (pickup chime), `dodge-swoosh.mp3` (dodge roll). Register all in SFXRegistry. Use Web Audio API tone generation as fallback if files not present — AudioManager.generateTone(frequency, duration, type) for procedural SFX. |
+| **Acceptance Criteria** | All 7 combat sounds play at appropriate events. Sounds are short (<500ms). No audio latency >50ms. |
+| **Verification** | Play game. Attack enemies — hear whoosh + impact. Get hit — hear player-hit. Parry — hear clang. Collect shards — hear chime. |
+
+---
+
+### T-071: Ambient Audio
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `polish` |
+| **Priority** | P3 |
+| **Depends On** | T-069 |
+| **Target Files** | `assets/audio/ambient/`, `src/audio/AudioManager.ts` |
+| **Description** | Add ambient audio loops per zone. Zone 1 "Shattered Atrium": low droning hum with occasional geometry crack. Create or generate a 15–30s looping ambient track. AudioManager.playAmbient(zoneId) crossfades between ambient tracks. Ambient volume controlled separately (default 0.3). Start ambient on room load, fade out on death/pause. Hub has its own quieter ambient. Use AudioContext oscillators if no audio files available — procedural drone with filtered noise. |
+| **Acceptance Criteria** | Ambient audio plays during gameplay. Changes on zone transition. Fades on pause/death. Volume adjustable. |
+| **Verification** | Start run. Hear ambient drone. Pause — audio fades. Resume — audio returns. |
+
+---
+
+### T-072: Boss Health Bar UI
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `UI` |
+| **Priority** | P2 |
+| **Depends On** | T-049 |
+| **Target Files** | `src/ui/BossHealthBar.ts`, `src/ui/UIManager.ts` |
+| **Description** | Full-width health bar at bottom of screen for boss encounters. Shows boss name + HP bar. Red bar with dark background. Phase markers at 66% and 33% (thin white lines). Appears when boss spawns (BOSS_SPAWNED event or encounter metadata flag). Fades out on boss death. Animated HP drain (CSS transition 0.3s). CSS class for low HP pulse effect (<20%). |
+| **Acceptance Criteria** | Boss bar appears during boss fights only. Updates in real-time. Phase markers visible. Fades on death. |
+| **Verification** | Start boss encounter. Verify bar appears with boss name. Deal damage. Verify bar drains smoothly. |
+
+---
+
+### T-073: Settings Menu
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `UI` + `meta` |
+| **Priority** | P3 |
+| **Depends On** | T-063, T-069 |
+| **Target Files** | `src/ui/SettingsMenu.ts`, `src/ui/PauseMenu.ts` |
+| **Description** | Accessible from pause menu "Settings" button. HTML/CSS overlay with sliders: Master Volume (0–100%), SFX Volume, Music Volume, Camera Sensitivity (0.1–2.0). Changes apply immediately (AudioManager + CameraController). On close: persist via SaveManager.updateSettings(). "Reset to Defaults" button restores DEFAULT_SETTINGS. Escape or "Back" returns to pause menu. |
+| **Acceptance Criteria** | All sliders functional. Changes persist across sessions. Camera sensitivity affects orbit speed in real time. |
+| **Verification** | Open settings. Adjust volumes. Verify audio changes. Reload game. Verify settings persisted. |
+
+---
+
+### T-074: Weapon HUD Indicator
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `UI` |
+| **Priority** | P2 |
+| **Depends On** | T-054 |
+| **Target Files** | `src/ui/HUD.ts` |
+| **Description** | Add weapon indicator to HUD bottom-right. Shows equipped weapon name + small icon (colored rectangle representing weapon shape). If 2 weapons carried, show secondary as dimmed smaller icon below. On weapon swap: brief flash animation on new primary. Listen to `WEAPON_SWAPPED` event. Weapon name uses condensed font, 12px, white with 50% opacity. |
+| **Acceptance Criteria** | Current weapon name visible during gameplay. Swap shows animation transition. Secondary weapon dimmed. |
+| **Verification** | Equip 2 weapons. Verify both shown in HUD. Swap. Verify indicator updates with animation. |
+
+---
+
+### T-075: Room Progress Indicator
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `UI` |
+| **Priority** | P3 |
+| **Depends On** | T-059 |
+| **Target Files** | `src/ui/HUD.ts` |
+| **Description** | Small dots at top-center of screen showing room progress through the zone. One dot per room in the zone layout. Current room = filled white dot. Cleared rooms = filled grey. Future rooms = hollow outline. Updates on ROOM_CLEARED event. Fades in on room entry, fades to low opacity after 3s. Always shows zone name in small text above dots. |
+| **Acceptance Criteria** | Dots match zone layout length. Current room highlighted. Progress updates on room transition. |
+| **Verification** | Start run. Verify dots match generated room count. Clear rooms. Verify dots fill in. |
+
+---
+
+### T-076: Controls Tutorial Overlay
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `UI` |
+| **Priority** | P3 |
+| **Depends On** | None |
+| **Target Files** | `src/ui/ControlsOverlay.ts`, `src/ui/UIManager.ts` |
+| **Description** | Toggleable controls reference (F4 key). Semi-transparent panel in screen corner showing: WASD Move, Shift Sprint, Space Dodge, LMB Light Attack, RMB (hold) Heavy Attack, Q Parry, R Heal, Tab Lock-On, E Interact, Esc Pause. Auto-shows on first run (check SaveManager for `tutorialShown` flag). Dismiss with any key. |
+| **Acceptance Criteria** | Overlay shows all controls clearly. Auto-shows once for new players. Toggleable with F4. |
+| **Verification** | Clear save data. Start game. Verify overlay auto-shows. Dismiss. Press F4. Verify it re-appears. |
+
+---
+
+### T-077: Defense/Armor in Damage Calculator
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `gameplay` |
+| **Priority** | P2 |
+| **Depends On** | T-019 |
+| **Target Files** | `src/combat/DamageCalculator.ts`, `src/combat/CombatSystem.ts` |
+| **Description** | Extend DamageCalculator with defense reduction. Add `defense` field to CombatEntity interface (default 0). Formula: `finalDamage = baseDamage * (100 / (100 + defense))`. This gives diminishing returns: 0 def = 100% dmg, 50 def = 67% dmg, 100 def = 50% dmg. Player base defense: 0 (future: armor pickups). Enemy defense from JSON (add optional `defense` to EnemyData.stats). Monolith Brute gets defense 30. |
+| **Acceptance Criteria** | Damage correctly reduced by defense stat. Zero defense = no change. Monolith Brute takes reduced damage. |
+| **Verification** | Hit Monolith Brute. Verify damage < base weapon damage. Hit Triangle Shard. Verify full damage. |
+
+---
+
+### T-078: Parry Damage Buff in Pipeline
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `gameplay` |
+| **Priority** | P2 |
+| **Depends On** | T-039, T-019 |
+| **Target Files** | `src/combat/CombatSystem.ts`, `src/combat/DamageCalculator.ts`, `src/player/PlayerStats.ts` |
+| **Description** | ParryState currently sets a 1.5x damage buff flag for 3s, but DamageCalculator doesn't check it. Add `getWeaponMultiplier(): number` to PlayerStats that returns 1.5 if parry buff active, else 1.0. CombatSystem passes this multiplier to calculateDamage for player-sourced attacks. Parry buff timer already exists in PlayerStats — just expose it. Add visual indicator: brief white outline on player mesh during buff window. |
+| **Acceptance Criteria** | After successful parry, next attacks deal 1.5x damage for 3 seconds. Multiplier appears in damage numbers. |
+| **Verification** | Parry an enemy attack. Immediately attack. Compare damage number to non-parry attack. Verify 1.5x. |
+
+---
+
+### T-079: Enemy Aggro Coordination
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `gameplay` |
+| **Priority** | P2 |
+| **Depends On** | T-020 |
+| **Target Files** | `src/ai/AggroCoordinator.ts`, `src/world/EncounterManager.ts` |
+| **Description** | Per the combat spec: max 2 enemies actively attacking at once; others orbit/reposition. Create AggroCoordinator that tracks which enemies have "attack tokens". EncounterManager owns the coordinator. Enemies request a token before entering attack state. If denied (2 tokens out), they orbit/wait. Token released on attack completion or stagger. Token auto-expires after 3s (prevents deadlocks). Coordinator exposed to enemy FSM via EnemyContext. |
+| **Acceptance Criteria** | With 4+ enemies, only 2 attack simultaneously. Others visibly orbit or hold position. No deadlocks. |
+| **Verification** | Spawn 5 triangle shards. Observe: max 2 attacking at once. Kill one attacker. Verify another claims the token. |
+
+---
+
+### T-080: Enhanced Telegraph VFX
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `polish` |
+| **Priority** | P2 |
+| **Depends On** | T-011 |
+| **Target Files** | `src/rendering/TelegraphVFX.ts`, `src/enemies/BaseEnemy.ts` |
+| **Description** | Standardize and enhance enemy telegraph visuals. TelegraphVFX utility: `startTelegraph(mesh, color, duration)` — animates uBaseColor toward telegraph color (red for melee, orange for ranged, white for unblockable) with pulsing intensity. Add scale pulse (1.0 → 1.15 → 1.0 over telegraph duration). On telegraph end: snap back to original color. BaseEnemy exposes `telegraph(color, duration)` and `endTelegraph()` helper methods that subclass states call. |
+| **Acceptance Criteria** | All enemy attacks show consistent color-coded telegraph glow with scale pulse. Colors match spec: red=melee, orange=ranged, white=unblockable. |
+| **Verification** | Fight each enemy type. Verify telegraph glow color matches attack type. Verify pulse is visible. |
+
+---
+
+### T-081: Screen Vignette on Low HP
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `rendering` |
+| **Priority** | P3 |
+| **Depends On** | T-012 |
+| **Target Files** | `src/rendering/PostProcessing.ts`, `src/shaders/vignetteFragment.ts` |
+| **Description** | Add vignette post-processing effect that intensifies as player HP drops. New ShaderPass: radial darkening from edges, tinted red. Intensity = `1 - (currentHP / maxHP)` clamped to [0, 0.6]. At full HP: no vignette. At 30% HP: noticeable red-black edges. At 10%: heavy vignette. PostProcessing.setVignetteIntensity(value) called from Game.ts update based on PlayerStats. Pulsing at <20% HP (sine wave on intensity ±0.1). |
+| **Acceptance Criteria** | No vignette at full HP. Visible red vignette below 50% HP. Pulsing below 20%. Does not obscure center of screen. |
+| **Verification** | Take damage to various HP levels. Verify vignette intensity scales. Heal. Verify vignette recedes. |
+
+---
+
+### T-082: Player Death Animation Enhancement
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `polish` |
+| **Priority** | P3 |
+| **Depends On** | T-038, T-009 |
+| **Target Files** | `src/player/states/DeadState.ts`, `src/player/PlayerModel.ts` |
+| **Description** | Enhance the player death sequence. On entering dead state: 1) Slow-motion effect (GameLoop.setTimeScale(0.3)) for 1s then restore. 2) Player mesh fragments into 12–16 tetrahedron pieces (reuse BaseEnemy shatter pattern) bursting outward. 3) Camera slowly pulls back by 2m over 1.5s. 4) After 1.5s, emit PLAYER_DIED to trigger death screen. Currently death is instant — this adds dramatic weight. |
+| **Acceptance Criteria** | Death triggers slow-motion, fragment burst, camera pull-back, then death screen. Total duration ~2s. |
+| **Verification** | Die to enemy. Verify slow-mo effect. Verify mesh shatters. Verify camera pulls back. Verify death screen appears after. |
+
+---
+
+### T-083: Encounter Debug Commands
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `tooling` |
+| **Priority** | P2 |
+| **Depends On** | T-026 |
+| **Target Files** | `src/utils/debug.ts`, `src/app/Game.ts` |
+| **Description** | Add debug console commands accessible via browser devtools. Expose `window.__celtest` object with: `spawnEnemy(typeId, x, z)` — spawns a single enemy at position. `clearRoom()` — kills all enemies instantly. `nextRoom()` — triggers room transition. `setHP(value)` — set player HP. `giveShards(amount)` — add shards. `listEnemies()` — log all active enemies with HP/state. Only available when debug overlay is active (F1). |
+| **Acceptance Criteria** | All commands functional from browser console. Only exposed when debug mode active. |
+| **Verification** | Open console. Call `__celtest.spawnEnemy('triangle-shard', 3, 3)`. Verify enemy appears. Call clearRoom(). Verify all die. |
+
+---
+
+### T-084: Performance Stats Panel
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `tooling` |
+| **Priority** | P3 |
+| **Depends On** | T-026, T-043 |
+| **Target Files** | `src/utils/debug.ts` |
+| **Description** | Extend debug overlay (F1) with a performance stats section. Show: draw calls (renderer.info.render.calls), triangles, active entities (encounter enemies + pickups), object pool stats (particle pool active/available, pickup mesh pool active/available, damage number pool active/available), frame time graph (last 60 frames as a simple bar chart using CSS). Update every 500ms to avoid perf overhead from the monitoring itself. |
+| **Acceptance Criteria** | Performance panel shows accurate real-time stats. Pool utilization visible. Frame time graph renders. |
+| **Verification** | Enable debug overlay. Verify draw call count matches scene complexity. Spawn enemies. Verify entity count updates. |
+
+---
+
+### T-085: Hitbox Manager Object Pool
+
+| Field | Value |
+|-------|-------|
+| **Work Type** | `infrastructure` |
+| **Priority** | P3 |
+| **Depends On** | T-043, T-018 |
+| **Target Files** | `src/combat/HitboxManager.ts` |
+| **Description** | Convert HitboxManager to pool Hitbox objects instead of creating new ones per attack. Pool the `alreadyHit: Set` objects — clear instead of allocating new. Pre-warm 20 hitbox objects. On createHitbox(): acquire from pool, populate fields. On removeHitbox(): release back to pool, clear alreadyHit set. Reduces GC pressure during intense combat with many simultaneous attacks. |
+| **Acceptance Criteria** | No new Hitbox allocations during combat. Pool stats visible in debug panel (T-084). Hit detection unchanged. |
+| **Verification** | Fight enemies. Monitor debug panel pool stats. Verify hitbox pool reuses objects. Verify no hit detection regressions. |
