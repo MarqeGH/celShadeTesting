@@ -1,0 +1,121 @@
+{
+  "id": "aggregate-boss",
+  "name": "The Aggregate",
+  "shape": "cluster",
+  "stats": {
+    "maxHP": 300,
+    "moveSpeed": 3,
+    "turnSpeed": 120,
+    "poise": 80,
+    "poiseRegenDelay": 4000,
+    "poiseRegenRate": 8
+  },
+  "perception": {
+    "aggroRange": 20,
+    "attackRange": 3.5,
+    "retreatRange": 0,
+    "losRequired": false
+  },
+  "attacks": [
+    {
+      "id": "melee_swipe",
+      "name": "Melee Swipe",
+      "telegraphDuration": 500,
+      "activeDuration": 250,
+      "recoveryDuration": 500,
+      "damage": 20,
+      "staggerDamage": 10,
+      "range": 3,
+      "hitboxShape": "arc",
+      "hitboxSize": { "radius": 3.0, "angle": 120 },
+      "movementDuringAttack": null
+    },
+    {
+      "id": "charge",
+      "name": "Charge Attack",
+      "telegraphDuration": 700,
+      "activeDuration": 400,
+      "recoveryDuration": 600,
+      "damage": 25,
+      "staggerDamage": 15,
+      "range": 8,
+      "hitboxShape": "sphere",
+      "hitboxSize": { "radius": 1.5 },
+      "movementDuringAttack": { "type": "dash", "distance": 8, "speed": 20 }
+    },
+    {
+      "id": "triangle_scatter",
+      "name": "Triangle Scatter",
+      "telegraphDuration": 600,
+      "activeDuration": 100,
+      "recoveryDuration": 800,
+      "damage": 15,
+      "staggerDamage": 5,
+      "range": 10,
+      "hitboxShape": "sphere",
+      "hitboxSize": { "radius": 0.4 },
+      "movementDuringAttack": null
+    }
+  ],
+  "drops": {
+    "shards": { "min": 15, "max": 25 },
+    "fragmentChance": 0.25
+  },
+  "fsm": {
+    "initialState": "idle",
+    "states": [
+      {
+        "name": "idle",
+        "transitions": [
+          { "to": "chase", "condition": "playerInAggroRange" }
+        ]
+      },
+      {
+        "name": "chase",
+        "transitions": [
+          { "to": "melee_swipe", "condition": "playerInAttackRange" },
+          { "to": "idle", "condition": "playerOutOfAggroRange" }
+        ]
+      },
+      {
+        "name": "melee_swipe",
+        "transitions": [
+          { "to": "cooldown", "condition": "attackComplete" }
+        ]
+      },
+      {
+        "name": "charge",
+        "transitions": [
+          { "to": "cooldown", "condition": "attackComplete" }
+        ]
+      },
+      {
+        "name": "triangle_scatter",
+        "transitions": [
+          { "to": "cooldown", "condition": "attackComplete" }
+        ]
+      },
+      {
+        "name": "cooldown",
+        "params": { "duration": 600 },
+        "transitions": [
+          { "to": "chase", "condition": "cooldownComplete" }
+        ]
+      },
+      {
+        "name": "staggered",
+        "params": { "duration": 2000 },
+        "transitions": [
+          { "to": "chase", "condition": "staggerComplete" }
+        ]
+      },
+      {
+        "name": "phase_transition",
+        "params": { "duration": 1200 },
+        "transitions": [
+          { "to": "chase", "condition": "transitionComplete" }
+        ]
+      }
+    ]
+  }
+}

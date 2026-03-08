@@ -1,6 +1,6 @@
 # Task Registry
 
-> 48 of 86 tasks completed (T-001–T-047 + T-BUG-001 done). Phase 6 tasks T-048–T-085 remain.
+> 49 of 86 tasks completed (T-001–T-047 + T-049 + T-BUG-001 done). Phase 6 tasks T-048, T-050–T-085 remain.
 > Completed task details are archived in `tasks/completed/`:
 > - [Core Infrastructure](completed/core-infrastructure.md) — T-001, T-003, T-004, T-005, T-014, T-024
 > - [Player & Combat](completed/player-combat.md) — T-002, T-006–T-010, T-015–T-019, T-031, T-039–T-041
@@ -199,7 +199,7 @@
 
 ---
 
-### T-049: Boss — The Aggregate (Data + Base)
+### [DONE] T-049: Boss — The Aggregate (Data + Base)
 
 | Field | Value |
 |-------|-------|
@@ -210,6 +210,8 @@
 | **Description** | Implement Zone 1 boss: The Aggregate — a cluster of fused triangles forming a shifting humanoid silhouette. Mesh: group of 12–16 ConeGeometry triangles arranged in humanoid shape, dark red #993333. HP 300. 3 phases based on HP thresholds: Phase 1 (100–66% HP): melee swipes (500ms telegraph, 250ms active, 20 dmg, 3m arc). Phase 2 (66–33%): adds a charge attack (700ms telegraph, 8m dash, 25 dmg) + triangle scatter (launches 4 triangles outward). Phase 3 (<33%): faster attacks, reduced telegraph by 100ms. No adds-splitting in this task (see T-050). |
 | **Acceptance Criteria** | Boss spawns with cluster mesh, transitions between 3 phases at HP thresholds, each phase adds attacks, telegraphs are clearly visible, boss has unique death effect. |
 | **Verification** | Spawn in boss arena room. Fight through all 3 phases. Verify phase transitions. Check damage values. |
+
+**Implementation note**: 14-cone humanoid cluster mesh with sinusoidal jitter. 8 FSM states (idle, chase, melee_swipe, charge, triangle_scatter, cooldown, staggered, phase_transition). Phase-aware attack selection in chase state. CubeSentinel-style ObjectPool projectile system for scatter attack. Enhanced death effect with 14 cone shatter pieces (slower, wider spread). EncounterManager updated with setScene() check.
 
 ---
 

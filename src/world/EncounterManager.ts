@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { BaseEnemy } from '../enemies/BaseEnemy';
 import { EnemyFactory } from '../enemies/EnemyFactory';
 import { CubeSentinel } from '../enemies/cube-sentinel/CubeSentinel';
+import { AggregateBoss } from '../enemies/aggregate-boss/AggregateBoss';
 import { CombatSystem } from '../combat/CombatSystem';
 import { StaggerSystem } from '../combat/StaggerSystem';
 import { HitboxManager } from '../combat/HitboxManager';
@@ -231,8 +232,11 @@ export class EncounterManager {
           this.eventBus,
           this.hitboxManager,
         ).then((enemy) => {
-          // CubeSentinel needs a scene reference for projectiles
+          // Enemies with projectiles need a scene reference
           if (enemy instanceof CubeSentinel) {
+            enemy.setScene(this.scene);
+          }
+          if (enemy instanceof AggregateBoss) {
             enemy.setScene(this.scene);
           }
 
