@@ -4,7 +4,7 @@
 
 3D cel-shaded soulslike roguelike built with **Three.js + TypeScript + Vite**. Humans have collapsed into abstract geometric shapes. The player is an unstable form fighting through zones of collapsed humanity.
 
-**Current state**: 41 of 46 tasks complete. The game is playable — player combat, two enemy types, wave-based encounters, zone progression, death/retry loop all functional. Remaining work: save system (T-042), object pool enhancement (T-043), math utilities (T-044), game config centralization (T-045), and one bug fix (T-BUG-001).
+**Current state**: 47 of 86 tasks complete (T-001–T-046 + T-BUG-001). The game is playable — player combat, three enemy types (TriangleShard, CubeSentinel, SpiralDancer), wave-based encounters, zone progression, death/retry loop, save system all functional. Phase 6 (T-047–T-085) is in progress: 39 tasks covering enemy variety, weapons, audio, game flow, meta-progression, UI, and polish.
 
 ## Stack
 
@@ -20,9 +20,9 @@
 
 ```
 docs/                — 12 design documents (architecture, enemies, combat, etc.)
-tasks/TASKS.md       — 5 remaining tasks + 1 bug (see tasks/completed/ for done work)
+tasks/TASKS.md       — 39 remaining tasks in Phase 6 (see tasks/completed/ for done work)
 tasks/completed/     — Archived completed tasks grouped by system area (5 files)
-data/enemies/        — Enemy JSON data (triangle-shard.json, cube-sentinel.json)
+data/enemies/        — Enemy JSON data (triangle-shard.json, cube-sentinel.json, spiral-dancer.json)
 data/weapons/        — Weapon JSON (fracture-blade.json)
 data/rooms/          — Room module JSON (atrium-room-square.json)
 data/encounters/     — Encounter wave JSON (zone1-encounters.json)
@@ -44,6 +44,7 @@ src/                 — 64 TypeScript source files (see subfolder table below)
 | `enemies/` | BaseEnemy (abstract), EnemyFactory, EnemyRegistry, `shared.ts` (common utilities) |
 | `enemies/triangle-shard/` | TriangleShard.ts + states.ts (5 AI states) |
 | `enemies/cube-sentinel/` | CubeSentinel.ts + states.ts (6 AI states) |
+| `enemies/spiral-dancer/` | SpiralDancer.ts + states.ts (6 AI states) |
 | `ai/` | StateMachine (generic FSM), AIState |
 | `world/` | RoomAssembler, RoomModule, ZoneGenerator, DoorSystem, EncounterManager |
 | `levels/` | Zone1Config, ZoneRegistry |
@@ -64,7 +65,7 @@ src/                 — 64 TypeScript source files (see subfolder table below)
 ## Critical Conventions
 
 ### No Magic Numbers
-All tuning values (speeds, damages, stamina costs, timing windows) should live in centralized config (T-045 pending). Currently many values are inline — consolidation is a remaining task.
+All tuning values (speeds, damages, stamina costs, timing windows) live in centralized config (`src/config/`). Use the config system — don't inline magic numbers.
 
 ### Data Schemas Are Canonical
 TypeScript interfaces in `docs/DATA_SCHEMAS.md` define the shape of all JSON files. Enemy JSON, weapon JSON, room JSON, encounter JSON must conform. Schemas include: `EnemyData`, `AttackData`, `RoomModuleData`, `EncounterData`, `WeaponData`, `PlayerStats`, `UnlockData`, `FSMStateConfig`.
@@ -92,7 +93,7 @@ Custom `ShaderMaterial` with 4-step toon ramp. Material factory: `createCelMater
 
 ## Task System
 
-41 of 46 tasks complete. `tasks/TASKS.md` contains only remaining work. Completed tasks are archived in `tasks/completed/`:
+47 of 86 tasks complete. `tasks/TASKS.md` contains completed Phase 5 tasks (T-042–T-046, T-BUG-001) and all Phase 6 tasks (T-047–T-085). Earlier completed tasks are archived in `tasks/completed/`:
 
 | Archive | Tasks |
 |---------|-------|
@@ -102,7 +103,7 @@ Custom `ShaderMaterial` with 4-step toon ramp. Material factory: `createCelMater
 | `completed/world-progression.md` | T-013, T-027–T-030, T-035–T-037 |
 | `completed/rendering-ui-polish.md` | T-011, T-012, T-025, T-026, T-032–T-034, T-038 |
 
-**Remaining**: T-042 (save system), T-043 (object pool enhancement), T-044 (math utilities), T-045 (game config centralization), T-BUG-001 (enemy wall collision).
+**Next open task**: T-047 (Monolith Brute enemy). See `tasks/TASKS.md` for full Phase 6 breakdown: enemies (T-047–T-050), weapons (T-051–T-055), rooms (T-056–T-058), world (T-059–T-061), UI/flow (T-062–T-076), combat (T-077–T-079), polish (T-080–T-082), tooling (T-083–T-085).
 
 ### Work Types
 

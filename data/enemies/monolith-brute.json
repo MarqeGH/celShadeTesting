@@ -1,0 +1,116 @@
+{
+  "id": "monolith-brute",
+  "name": "Monolith Brute",
+  "shape": "box",
+  "stats": {
+    "maxHP": 120,
+    "moveSpeed": 2,
+    "turnSpeed": 90,
+    "poise": 100,
+    "poiseRegenDelay": 3000,
+    "poiseRegenRate": 10
+  },
+  "perception": {
+    "aggroRange": 15,
+    "attackRange": 3.5,
+    "retreatRange": 0,
+    "losRequired": true
+  },
+  "attacks": [
+    {
+      "id": "slam",
+      "name": "Slam",
+      "telegraphDuration": 800,
+      "activeDuration": 300,
+      "recoveryDuration": 1000,
+      "damage": 30,
+      "staggerDamage": 15,
+      "range": 3,
+      "hitboxShape": "circle",
+      "hitboxSize": { "radius": 3.0 },
+      "movementDuringAttack": null
+    },
+    {
+      "id": "sweep",
+      "name": "Sweep",
+      "telegraphDuration": 600,
+      "activeDuration": 400,
+      "recoveryDuration": 700,
+      "damage": 20,
+      "staggerDamage": 10,
+      "range": 3.5,
+      "hitboxShape": "arc",
+      "hitboxSize": { "radius": 3.5, "angle": 180 },
+      "movementDuringAttack": null
+    },
+    {
+      "id": "stomp",
+      "name": "Stomp",
+      "telegraphDuration": 500,
+      "activeDuration": 200,
+      "recoveryDuration": 600,
+      "damage": 15,
+      "staggerDamage": 8,
+      "range": 2,
+      "hitboxShape": "circle",
+      "hitboxSize": { "radius": 2.0 },
+      "movementDuringAttack": null
+    }
+  ],
+  "drops": {
+    "shards": { "min": 5, "max": 10 },
+    "fragmentChance": 0.1
+  },
+  "fsm": {
+    "initialState": "idle",
+    "states": [
+      {
+        "name": "idle",
+        "transitions": [
+          { "to": "chase", "condition": "playerInAggroRange" }
+        ]
+      },
+      {
+        "name": "chase",
+        "transitions": [
+          { "to": "slam", "condition": "attackReady_and_playerInRange" },
+          { "to": "sweep", "condition": "attackReady_and_playerInRange" },
+          { "to": "stomp", "condition": "attackReady_and_playerClose" },
+          { "to": "idle", "condition": "playerOutOfAggroRange" }
+        ]
+      },
+      {
+        "name": "slam",
+        "transitions": [
+          { "to": "cooldown", "condition": "attackComplete" }
+        ]
+      },
+      {
+        "name": "sweep",
+        "transitions": [
+          { "to": "cooldown", "condition": "attackComplete" }
+        ]
+      },
+      {
+        "name": "stomp",
+        "transitions": [
+          { "to": "cooldown", "condition": "attackComplete" }
+        ]
+      },
+      {
+        "name": "cooldown",
+        "params": { "duration": 500 },
+        "transitions": [
+          { "to": "chase", "condition": "cooldownComplete" }
+        ]
+      },
+      {
+        "name": "staggered",
+        "params": { "duration": 2000 },
+        "transitions": [
+          { "to": "chase", "condition": "staggerComplete" }
+        ]
+      }
+    ]
+  }
+}

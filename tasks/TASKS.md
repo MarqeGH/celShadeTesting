@@ -1,6 +1,6 @@
 # Task Registry
 
-> 46 of 46 tasks completed. Remaining work below.
+> 48 of 86 tasks completed (T-001–T-047 + T-BUG-001 done). Phase 6 tasks T-048–T-085 remain.
 > Completed task details are archived in `tasks/completed/`:
 > - [Core Infrastructure](completed/core-infrastructure.md) — T-001, T-003, T-004, T-005, T-014, T-024
 > - [Player & Combat](completed/player-combat.md) — T-002, T-006–T-010, T-015–T-019, T-031, T-039–T-041
@@ -169,7 +169,7 @@
 
 ---
 
-### T-047: Monolith Brute Enemy
+### [DONE] T-047: Monolith Brute Enemy
 
 | Field | Value |
 |-------|-------|
@@ -180,6 +180,8 @@
 | **Description** | Implement the Monolith Brute — slow heavy tank. BoxGeometry 0.8×2.5×0.4m, dark stone #555566. FSM: idle → chase (2 m/s) → slam (800ms telegraph, 300ms active, 3m radius, 30 dmg, 1000ms recovery) → sweep (600ms telegraph, 400ms 180° arc 3.5m, 20 dmg) → stomp (500ms telegraph, 200ms 2m radius, 15 dmg) → cooldown → staggered (expose glowing crack, 1.5x damage taken for 2s). HP 120, poise 100. |
 | **Acceptance Criteria** | Enemy advances slowly, picks from 3 attacks, long telegraphs are clearly visible, stagger exposes vulnerability window. |
 | **Verification** | Spawn via debug encounter. Test all 3 attacks. Verify stagger vulnerability applies 1.5x damage. |
+
+**Implementation note:** Created MonolithBrute extending BaseEnemy with BoxGeometry 0.8×2.5×0.8, #555566 cel material. 7 FSM states (idle, chase, slam, sweep, stomp, cooldown, staggered). Vulnerability mechanic: `takeDamage()` override applies `damageMultiplier` (1.5x during stagger, controlled by BruteStaggeredState). Crack glow uses orange color (#FF9933) on `uBaseColor` uniform. Registered in EnemyRegistry + side-effect import in Game.ts.
 
 ---
 
