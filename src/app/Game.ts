@@ -38,6 +38,8 @@ import { MenuSystem } from '../ui/MenuSystem';
 import { RunState } from '../progression/RunState';
 import { ParticleSystem } from '../rendering/ParticleSystem';
 import { SaveManager } from '../save/SaveManager';
+import { ZoneGenerator, type ZoneLayout } from '../world/ZoneGenerator';
+import '../levels/Zone1Config'; // side-effect: registers zone config in ZoneRegistry
 
 export class Game {
   readonly scene: THREE.Scene;
@@ -76,6 +78,9 @@ export class Game {
   private particleSystem: ParticleSystem;
   private runState: RunState;
   private saveManager: SaveManager;
+  private zoneGenerator: ZoneGenerator;
+  private currentLayout: ZoneLayout | null = null;
+  private encounterDataCache: EncounterData[] = [];
   private currentRoom: RoomModule | null = null;
 
   constructor(container: HTMLElement) {
@@ -200,9 +205,8 @@ export class Game {
     this.hud.attach(container);
     this.uiManager = new UIManager(this.hud);
 
-    // Run state tracking
+    // Run state tracking (startRun called later in startZoneRun)
     this.runState = new RunState(this.eventBus);
-    this.runState.startRun();
 
     // Death screen
     this.menuSystem = new MenuSystem(
@@ -240,7 +244,8 @@ export class Game {
       }
     });
 
-    // Door system and room assembler
+    // Zone generator and room assembly
+    this.zoneGenerator = new ZoneGenerator();
     this.assetLoader = new AssetLoader();
     this.roomAssembler = new RoomAssembler();
     this.doorSystem = new DoorSystem(this.eventBus, this.input, container);
@@ -249,15 +254,15 @@ export class Game {
       return this.handleRoomTransition(exit);
     });
 
-    // Load default weapon + secondary, then start test encounter
+    // Load default weapon + secondary, then start zone run
     Promise.all([
       this.weaponSystem.equipWeapon('fracture-blade'),
       this.weaponSystem.equipSecondary('edge-spike'),
     ])
-      .then(() => this.startTestEncounter())
+      .then(() => this.startZoneRun('shattered-atrium'))
       .catch((err) => {
         console.warn('[Game] Failed to load weapon, using defaults:', err);
-        this.startTestEncounter();
+        this.startZoneRun('shattered-atrium');
       });
 
     this.postProcessing = new PostProcessing(
@@ -279,38 +284,116 @@ export class Game {
     this.gameLoop.start();
   }
 
-  private startTestEncounter(): void {
-    // Load encounter data and start via EncounterManager
-    const testEncounter: EncounterData = {
-      id: 'test-arena',
-      difficulty: 3,
-      waves: [
-        {
-          delay: 0,
-          spawns: [
-            { enemyId: 'triangle-shard', count: 3, spawnPoint: 'random' },
-            { enemyId: 'cube-sentinel', count: 2, spawnPoint: 'farthest' },
-          ],
-        },
-      ],
-    };
+  /**
+   * Start a zone run: generate layout, load first room + encounter.
+   */
+  private async startZoneRun(zoneId: string): Promise<void> {
+    // Load encounter definitions from JSON
+    try {
+      this.encounterDataCache = await this.assetLoader.loadJSON<EncounterData[]>(
+        'data/encounters/zone1-encounters.json',
+      );
+    } catch (err) {
+      console.error('[Game] Failed to load encounter data:', err);
+      this.encounterDataCache = [];
+    }
 
-    const spawnPoints = [
-      new THREE.Vector3(5, 0, 5),
-      new THREE.Vector3(-5, 0, -5),
-      new THREE.Vector3(6, 0, -4),
-      new THREE.Vector3(-7, 0, 6),
-      new THREE.Vector3(7, 0, -6),
-    ];
+    // Generate zone layout
+    const layout = this.zoneGenerator.generate(zoneId);
+    if (!layout || layout.rooms.length === 0) {
+      console.error(`[Game] Failed to generate layout for zone "${zoneId}"`);
+      return;
+    }
+    this.currentLayout = layout;
 
-    this.encounterManager.startEncounter(
-      testEncounter,
-      'test-arena',
+    // Start run tracking
+    this.runState.startRun(zoneId);
+
+    // Load the first room from the layout
+    await this.loadRoomFromLayout(0);
+  }
+
+  /**
+   * Load a room and its encounter from the current zone layout by index.
+   */
+  private async loadRoomFromLayout(roomIndex: number): Promise<void> {
+    if (!this.currentLayout) return;
+
+    const entry = this.currentLayout.rooms[roomIndex];
+    if (!entry) {
+      console.warn(`[Game] No room at index ${roomIndex} in layout`);
+      return;
+    }
+
+    // Unload current room if exists
+    if (this.currentRoom) {
+      this.scene.remove(this.currentRoom.group);
+      this.currentRoom.dispose();
+      this.currentRoom = null;
+    }
+
+    // Remove test arena from scene on first room load
+    if (this.testArena.group.parent) {
+      this.scene.remove(this.testArena.group);
+    }
+
+    // Load room JSON (fall back to atrium-room-square if missing)
+    let roomData: RoomModuleData;
+    try {
+      roomData = await this.assetLoader.loadJSON<RoomModuleData>(
+        `data/rooms/${entry.roomId}.json`,
+      );
+    } catch {
+      console.warn(`[Game] Room "${entry.roomId}" not found, falling back to atrium-room-square`);
+      roomData = await this.assetLoader.loadJSON<RoomModuleData>(
+        'data/rooms/atrium-room-square.json',
+      );
+    }
+
+    // Assemble and add to scene
+    const room = this.roomAssembler.assemble(roomData);
+    this.scene.add(room.group);
+    this.currentRoom = room;
+
+    // Register with door system and encounter manager
+    this.doorSystem.setRoom(room);
+    this.encounterManager.setWallColliders(room.wallColliders);
+
+    // Look up encounter data
+    const encounter = this.findEncounter(entry.encounterId);
+    if (!encounter) {
+      console.error(`[Game] Encounter "${entry.encounterId}" not found in cache`);
+      return;
+    }
+
+    // Position player and start encounter
+    const entryPosition = room.getPlayerEntry();
+    const spawnPoints = room.getSpawnPoints();
+    this.playerModel.mesh.position.copy(entryPosition);
+
+    await this.encounterManager.startEncounter(
+      encounter,
+      roomData.id,
       spawnPoints,
-      this.playerModel.mesh.position,
-    ).catch((err) => {
-      console.error('[Game] Failed to start test encounter:', err);
-    });
+      entryPosition,
+    );
+
+    console.log(
+      `[Game] Room ${roomIndex + 1}/${this.currentLayout.rooms.length}: ` +
+      `"${entry.roomId}" + encounter "${entry.encounterId}" (difficulty ${entry.actualDifficulty})`,
+    );
+  }
+
+  /**
+   * Find an encounter in the cached encounter data by ID.
+   */
+  private findEncounter(encounterId: string): EncounterData | null {
+    const found = this.encounterDataCache.find((e) => e.id === encounterId);
+    if (!found) {
+      console.warn(`[Game] Encounter "${encounterId}" not found in encounter data cache`);
+      return null;
+    }
+    return found;
   }
 
   private addTestCube(): void {
@@ -384,53 +467,32 @@ export class Game {
     // Dispose current encounter
     this.encounterManager.dispose();
 
-    // Unload current assembled room if one exists
-    if (this.currentRoom) {
-      this.scene.remove(this.currentRoom.group);
-      this.currentRoom.dispose();
-      this.currentRoom = null;
+    // Advance to next room in the zone layout
+    this.runState.advanceRoom();
+
+    if (!this.currentLayout) {
+      console.error('[Game] No zone layout active during room transition');
+      return this.playerModel.mesh.position.clone();
     }
 
-    // Determine the next room to load.
-    // For now, always load the atrium-room-square as a demonstration.
-    // A full ZoneGenerator (T-030) will provide proper room sequencing.
-    const roomData = await this.assetLoader.loadJSON<RoomModuleData>('data/rooms/atrium-room-square.json');
-    const room = this.roomAssembler.assemble(roomData);
-    this.scene.add(room.group);
-    this.currentRoom = room;
+    const nextIndex = this.runState.currentRoomIndex;
 
-    // Register room with door system
-    this.doorSystem.setRoom(room);
+    // Check if zone is complete
+    if (nextIndex >= this.currentLayout.rooms.length) {
+      console.log('[Game] Zone complete! All rooms cleared.');
+      // Restart the zone for now (future: victory screen)
+      await this.startZoneRun(this.currentLayout.zoneId);
+      return this.playerModel.mesh.position.clone();
+    }
 
-    // Update encounter manager with new room's wall colliders
-    this.encounterManager.setWallColliders(room.wallColliders);
+    // Load the next room from the layout
+    await this.loadRoomFromLayout(nextIndex);
 
-    // Start a new encounter for the new room
-    const encounter: EncounterData = {
-      id: `encounter-${roomData.id}`,
-      difficulty: 3,
-      waves: [
-        {
-          delay: 500,
-          spawns: [
-            { enemyId: 'triangle-shard', count: 2, spawnPoint: 'random' },
-            { enemyId: 'cube-sentinel', count: 1, spawnPoint: 'farthest' },
-          ],
-        },
-      ],
-    };
+    const entryPosition = this.currentRoom
+      ? this.currentRoom.getPlayerEntry()
+      : this.playerModel.mesh.position.clone();
 
-    const entryPosition = room.getPlayerEntry();
-    const spawnPoints = room.getSpawnPoints();
-
-    await this.encounterManager.startEncounter(
-      encounter,
-      roomData.id,
-      spawnPoints,
-      entryPosition,
-    );
-
-    console.log(`[Game] Loaded room "${roomData.id}" via ${exit.direction} door`);
+    console.log(`[Game] Transitioned via ${exit.direction} door to room ${nextIndex + 1}/${this.currentLayout.rooms.length}`);
     return entryPosition;
   }
 
@@ -447,15 +509,13 @@ export class Game {
     // Clear current encounter
     this.encounterManager.dispose();
 
-    // Reset wall colliders to test arena
-    this.encounterManager.setWallColliders(this.testArena.wallColliders);
-
     // Restore HUD
     this.uiManager.setState('gameplay');
 
-    // Start a new run and respawn encounter
-    this.runState.startRun();
-    this.startTestEncounter();
+    // Start a fresh zone run (generates new layout)
+    this.startZoneRun('shattered-atrium').catch((err) => {
+      console.error('[Game] Failed to restart zone run:', err);
+    });
   }
 
   private onToggleOutline = (e: KeyboardEvent): void => {

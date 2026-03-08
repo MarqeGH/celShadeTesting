@@ -361,7 +361,7 @@
 
 ---
 
-### T-059: Zone Generator Integration
+### [DONE] T-059: Zone Generator Integration
 
 | Field | Value |
 |-------|-------|
@@ -372,6 +372,8 @@
 | **Description** | Wire ZoneGenerator into Game.ts room transitions. On game start: generate a ZoneLayout via `ZoneGenerator.generate('shattered-atrium')`. Store the layout in Game. `handleRoomTransition` loads the next room/encounter from the layout instead of hardcoded values. Track current room index via RunState.advanceRoom(). Load encounter JSON from `data/encounters/zone1-encounters.json` matching the layout's encounterId. On last room: spawn boss encounter (or final wave). |
 | **Acceptance Criteria** | Each run generates a different room sequence. Rooms load from layout. Encounters match layout. Room index advances correctly. |
 | **Verification** | Start 3 runs. Verify room order differs. Check console logs show ZoneGenerator output. |
+
+**Implementation notes:** Replaced hardcoded room/encounter loading in Game.ts with ZoneGenerator-driven flow. Added `startZoneRun(zoneId)` which loads encounter JSON, generates a ZoneLayout, and loads the first room. `handleRoomTransition` now advances via `runState.advanceRoom()` and loads next room/encounter from the layout. Added `loadRoomFromLayout(index)` helper with fallback for missing room JSON (e.g. `atrium-balcony`). `handleReturnToHub` now generates a fresh layout on retry. Zone completion restarts the zone (future: victory screen).
 
 ---
 
