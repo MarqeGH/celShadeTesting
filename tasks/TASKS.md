@@ -1,6 +1,6 @@
 # Task Registry
 
-> 60 of 86 tasks completed (T-001–T-061 + T-BUG-001 done). Phase 6 tasks T-062–T-085 remain.
+> 61 of 86 tasks completed (T-001–T-062 + T-BUG-001 done). Phase 6 tasks T-063–T-085 remain.
 > Completed task details are archived in `tasks/completed/`:
 > - [Core Infrastructure](completed/core-infrastructure.md) — T-001, T-003, T-004, T-005, T-014, T-024
 > - [Player & Combat](completed/player-combat.md) — T-002, T-006–T-010, T-015–T-019, T-031, T-039–T-041
@@ -409,7 +409,7 @@
 
 ---
 
-### T-062: Title Screen
+### [DONE] T-062: Title Screen
 
 | Field | Value |
 |-------|-------|
@@ -420,6 +420,7 @@
 | **Description** | HTML/CSS overlay title screen shown on game launch. Game title "CELTEST" in large sparse lettering (letter-spacing 24px, color #c0c0c0, weight 100). Subtitle "A world of collapsed forms" in small text below. "Press any key to start" pulsing at bottom. Background: the Three.js scene renders a slowly rotating empty arena with ambient lighting (no player/enemies). On key press: fade out 500ms → transition to hub or directly to run start. Add `title` state to UIManager. |
 | **Acceptance Criteria** | Title screen displays on game load. Scene renders behind it. Key press transitions to gameplay. |
 | **Verification** | Load game. Verify title screen shows. Press key. Verify transition to gameplay. |
+| **Implementation Notes** | Created `src/ui/TitleScreen.ts` with HTML/CSS overlay (fade-out transition 500ms). Added `'title'` to `UIState` in UIManager. Game.ts starts in title state — scene renders behind overlay, gameplay updates are skipped. On key/click press, fades out and starts weapon load + zone run. |
 
 ---
 

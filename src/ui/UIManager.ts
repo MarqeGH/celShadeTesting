@@ -6,7 +6,7 @@
 
 import { HUD } from './HUD';
 
-export type UIState = 'gameplay' | 'menu' | 'hidden';
+export type UIState = 'title' | 'gameplay' | 'menu' | 'hidden';
 
 export class UIManager {
   private state: UIState = 'gameplay';
@@ -21,6 +21,7 @@ export class UIManager {
       case 'gameplay':
         this.hud.show();
         break;
+      case 'title':
       case 'menu':
       case 'hidden':
         this.hud.hide();

@@ -35,6 +35,7 @@ import { AssetLoader } from '../engine/AssetLoader';
 import { PickupSystem } from '../interactions/PickupSystem';
 import { WeaponPickup } from '../interactions/WeaponPickup';
 import { MenuSystem } from '../ui/MenuSystem';
+import { TitleScreen } from '../ui/TitleScreen';
 import { RunState } from '../progression/RunState';
 import { ParticleSystem } from '../rendering/ParticleSystem';
 import { SaveManager } from '../save/SaveManager';
@@ -76,6 +77,7 @@ export class Game {
   private pickupSystem: PickupSystem;
   private weaponPickup: WeaponPickup;
   private menuSystem: MenuSystem;
+  private titleScreen: TitleScreen;
   private particleSystem: ParticleSystem;
   private runState: RunState;
   private saveManager: SaveManager;
@@ -257,16 +259,22 @@ export class Game {
       return this.handleRoomTransition(exit);
     });
 
-    // Load default weapon + secondary, then start zone run
-    Promise.all([
-      this.weaponSystem.equipWeapon('fracture-blade'),
-      this.weaponSystem.equipSecondary('edge-spike'),
-    ])
-      .then(() => this.startZoneRun('shattered-atrium'))
-      .catch((err) => {
-        console.warn('[Game] Failed to load weapon, using defaults:', err);
-        this.startZoneRun('shattered-atrium');
-      });
+    // Start in title state — HUD hidden, scene renders behind title overlay
+    this.uiManager.setState('title');
+
+    // Title screen — on dismiss, load weapons and start zone run
+    this.titleScreen = new TitleScreen(container, () => {
+      this.uiManager.setState('gameplay');
+      Promise.all([
+        this.weaponSystem.equipWeapon('fracture-blade'),
+        this.weaponSystem.equipSecondary('edge-spike'),
+      ])
+        .then(() => this.startZoneRun('shattered-atrium'))
+        .catch((err) => {
+          console.warn('[Game] Failed to load weapon, using defaults:', err);
+          this.startZoneRun('shattered-atrium');
+        });
+    });
 
     this.postProcessing = new PostProcessing(
       this.renderer.renderer,
@@ -410,6 +418,12 @@ export class Game {
   private update(dt: number): void {
     this.input.update();
 
+    // Skip gameplay updates while on title screen
+    if (this.uiManager.getState() === 'title') {
+      this.input.resetMouseDelta();
+      return;
+    }
+
     this.playerStateMachine.update(dt);
 
     // Resolve wall collisions against current room (assembled or test arena)
@@ -550,6 +564,7 @@ export class Game {
       this.currentRoom.dispose();
     }
     this.damageNumbers.dispose();
+    this.titleScreen.dispose();
     this.menuSystem.dispose();
     this.saveManager.dispose();
     this.runState.dispose();
