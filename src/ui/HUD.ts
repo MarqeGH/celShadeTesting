@@ -125,6 +125,7 @@ function injectStyles(): void {
 
 export class HUD {
   private root: HTMLDivElement;
+  private leftPanel!: HTMLDivElement;
   private hpFill: HTMLDivElement;
   private staminaFill: HTMLDivElement;
   private staminaBar: HTMLDivElement;
@@ -181,6 +182,7 @@ export class HUD {
     this.healContainer.className = 'hud-heals';
     left.appendChild(this.healContainer);
 
+    this.leftPanel = left;
     this.root.appendChild(left);
 
     // ── Right panel ──
@@ -250,6 +252,11 @@ export class HUD {
       }
       this.healContainer.appendChild(charge);
     }
+  }
+
+  /** Toggle HP/stamina/heal visibility (hidden in hub, shown in gameplay). */
+  setCombatBarsVisible(visible: boolean): void {
+    this.leftPanel.style.display = visible ? '' : 'none';
   }
 
   show(): void {

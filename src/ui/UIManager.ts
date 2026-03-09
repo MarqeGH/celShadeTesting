@@ -6,7 +6,7 @@
 
 import { HUD } from './HUD';
 
-export type UIState = 'title' | 'gameplay' | 'menu' | 'paused' | 'hidden';
+export type UIState = 'title' | 'gameplay' | 'menu' | 'paused' | 'hidden' | 'hub';
 
 export class UIManager {
   private state: UIState = 'gameplay';
@@ -22,6 +22,12 @@ export class UIManager {
       case 'paused':
         // Keep HUD visible during pause (shows behind overlay)
         this.hud.show();
+        this.hud.setCombatBarsVisible(true);
+        break;
+      case 'hub':
+        // Show shard count only, hide HP/stamina/heal bars
+        this.hud.show();
+        this.hud.setCombatBarsVisible(false);
         break;
       case 'title':
       case 'menu':
@@ -37,7 +43,7 @@ export class UIManager {
 
   /** Call each frame — delegates to HUD update. */
   update(): void {
-    if (this.state === 'gameplay') {
+    if (this.state === 'gameplay' || this.state === 'hub') {
       this.hud.update();
     }
   }

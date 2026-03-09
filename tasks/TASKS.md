@@ -1,6 +1,6 @@
 # Task Registry
 
-> 63 of 86 tasks completed (T-001–T-064 + T-BUG-001 done). Phase 6 tasks T-065–T-085 remain.
+> 64 of 86 tasks completed (T-001–T-065 + T-BUG-001 done). Phase 6 tasks T-066–T-085 remain.
 > Completed task details are archived in `tasks/completed/`:
 > - [Core Infrastructure](completed/core-infrastructure.md) — T-001, T-003, T-004, T-005, T-014, T-024
 > - [Player & Combat](completed/player-combat.md) — T-002, T-006–T-010, T-015–T-019, T-031, T-039–T-041
@@ -471,7 +471,7 @@
 
 ---
 
-### T-065: Hub Scene
+### [DONE] T-065: Hub Scene
 
 | Field | Value |
 |-------|-------|
@@ -482,6 +482,8 @@
 | **Description** | Simple hub area between runs. Small 10m×10m room with cel-shaded floor. Player can walk around. Contains: a glowing portal mesh (TorusGeometry, pulsing emissive) — press E to start run. Meta-currency counter visible in HUD. Future: shop pedestal (T-068). Game.ts manages hub→run→hub transitions. UIManager `hub` state shows shard count but hides stamina/HP. Player position resets to hub center on return. |
 | **Acceptance Criteria** | Hub loads after death screen "Return" or on game start (post-title). Player walks in hub. Portal starts a run. |
 | **Verification** | Die in a run. Click Return. Verify hub loads. Walk to portal. Press E. Verify run starts. |
+
+**Implementation note:** Created `HubScene` class with 10m room, pulsing TorusGeometry portal at (0,1.5,-3), E-key interaction with proximity prompt. Added `'hub'` UIState with `HUD.setCombatBarsVisible()` to hide HP/stamina/heal in hub. Game.ts routes title→hub and death/victory→hub. Pause/resume works in hub. `inHub` flag gates combat system updates.
 
 ---
 

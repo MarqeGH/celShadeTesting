@@ -43,6 +43,7 @@ import { ParticleSystem } from '../rendering/ParticleSystem';
 import { SaveManager } from '../save/SaveManager';
 import { ZoneGenerator, type ZoneLayout } from '../world/ZoneGenerator';
 import { HazardSystem } from '../world/HazardSystem';
+import { HubScene } from '../world/HubScene';
 import '../levels/Zone1Config'; // side-effect: registers zone config in ZoneRegistry
 
 export class Game {
@@ -90,6 +91,10 @@ export class Game {
   private currentLayout: ZoneLayout | null = null;
   private encounterDataCache: EncounterData[] = [];
   private currentRoom: RoomModule | null = null;
+  private hubScene: HubScene | null = null;
+  private inHub = false;
+  /** Tracks UI state before pausing so we can restore it on resume. */
+  private prePauseState: 'gameplay' | 'hub' = 'gameplay';
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -284,17 +289,16 @@ export class Game {
     // Start in title state — HUD hidden, scene renders behind title overlay
     this.uiManager.setState('title');
 
-    // Title screen — on dismiss, load weapons and start zone run
+    // Title screen — on dismiss, load weapons and enter hub
     this.titleScreen = new TitleScreen(container, () => {
-      this.uiManager.setState('gameplay');
       Promise.all([
         this.weaponSystem.equipWeapon('fracture-blade'),
         this.weaponSystem.equipSecondary('edge-spike'),
       ])
-        .then(() => this.startZoneRun('shattered-atrium'))
+        .then(() => this.loadHub())
         .catch((err) => {
           console.warn('[Game] Failed to load weapon, using defaults:', err);
-          this.startZoneRun('shattered-atrium');
+          this.loadHub();
         });
     });
 
@@ -449,42 +453,53 @@ export class Game {
 
     this.playerStateMachine.update(dt);
 
-    // Resolve wall collisions against current room (assembled or test arena)
-    const walls = this.currentRoom
-      ? this.currentRoom.wallColliders
-      : this.testArena.wallColliders;
-    this.playerController.resolveWallCollisions(walls);
-
-    // Update encounter (handles enemy updates + wave progression)
     const playerPos = this.playerModel.mesh.position;
-    this.encounterManager.update(dt, playerPos);
 
-    this.combatSystem.update();
-    this.staggerSystem.update(dt);
-    this.hazardSystem.update(dt, playerPos);
-    this.pickupSystem.update(dt, playerPos);
-    this.weaponPickup.update(dt, playerPos);
-    this.particleSystem.update(dt);
-    this.doorSystem.update(dt);
-    this.playerStats.update(dt);
-    this.uiManager.update();
-    this.playerModel.update(dt);
-    this.debugOverlay.update(dt);
+    if (this.inHub) {
+      // Hub mode: only player movement, hub interaction, camera, UI
+      if (this.hubScene) {
+        this.playerController.resolveWallCollisions(this.hubScene.wallColliders);
+        this.hubScene.update(dt, playerPos);
+      }
+      this.playerStats.update(dt);
+      this.uiManager.update();
+      this.playerModel.update(dt);
+      this.debugOverlay.update(dt);
+    } else {
+      // Gameplay mode: full combat systems
+      const walls = this.currentRoom
+        ? this.currentRoom.wallColliders
+        : this.testArena.wallColliders;
+      this.playerController.resolveWallCollisions(walls);
 
-    // Debug: F4 clear room — kill all enemies instantly
-    if (this.debugOverlay.clearRoomRequested) {
-      this.debugOverlay.clearRoomRequested = false;
-      const enemies = this.encounterManager.getEnemies();
-      for (const enemy of enemies) {
-        if (!enemy.isDead()) {
-          enemy.takeDamage(enemy.getHp());
+      this.encounterManager.update(dt, playerPos);
+      this.combatSystem.update();
+      this.staggerSystem.update(dt);
+      this.hazardSystem.update(dt, playerPos);
+      this.pickupSystem.update(dt, playerPos);
+      this.weaponPickup.update(dt, playerPos);
+      this.particleSystem.update(dt);
+      this.doorSystem.update(dt);
+      this.playerStats.update(dt);
+      this.uiManager.update();
+      this.playerModel.update(dt);
+      this.debugOverlay.update(dt);
+
+      // Debug: F4 clear room — kill all enemies instantly
+      if (this.debugOverlay.clearRoomRequested) {
+        this.debugOverlay.clearRoomRequested = false;
+        const enemies = this.encounterManager.getEnemies();
+        for (const enemy of enemies) {
+          if (!enemy.isDead()) {
+            enemy.takeDamage(enemy.getHp());
+          }
         }
       }
-    }
 
-    // Lock-on system: acquire, switch, drop targets
-    this.lockOnSystem.update(playerPos, this.cameraController.getYaw());
-    this.cameraController.setLockOnTarget(this.lockOnSystem.getTargetPosition());
+      // Lock-on system: acquire, switch, drop targets
+      this.lockOnSystem.update(playerPos, this.cameraController.getYaw());
+      this.cameraController.setLockOnTarget(this.lockOnSystem.getTargetPosition());
+    }
 
     // Update camera orbit and follow
     this.cameraController.update(dt, this.playerModel.mesh.position);
@@ -551,28 +566,76 @@ export class Game {
   }
 
   /**
-   * Called when "Return to Hub" is clicked on death screen.
-   * Resets player, encounter, and restarts a fresh run.
+   * Called when "Return to Hub" is clicked on death/victory screen.
+   * Cleans up the run and loads the hub scene.
    */
   private handleReturnToHub(): void {
     // Hide victory screen if active
     this.victoryScreen.hide();
 
-    // Reset player state
-    this.playerStats.reset();
-    this.playerStateMachine.fsm.setState('idle');
-    this.playerModel.mesh.position.set(0, 0, 0);
-
     // Clear current encounter and hazards
     this.encounterManager.dispose();
     this.hazardSystem.clear();
 
-    // Restore HUD
-    this.uiManager.setState('gameplay');
+    this.loadHub();
+  }
 
-    // Start a fresh zone run (generates new layout)
+  /**
+   * Load the hub scene. Creates it on first call, then re-adds to scene.
+   * Resets player state and positions at hub entry.
+   */
+  private loadHub(): void {
+    // Remove current room from scene
+    if (this.currentRoom) {
+      this.scene.remove(this.currentRoom.group);
+      this.currentRoom.dispose();
+      this.currentRoom = null;
+    }
+
+    // Remove test arena if still present
+    if (this.testArena.group.parent) {
+      this.scene.remove(this.testArena.group);
+    }
+
+    // Create hub scene on first load
+    if (!this.hubScene) {
+      this.hubScene = new HubScene(
+        this.input,
+        this.container,
+        () => this.handleStartRunFromHub(),
+      );
+    }
+
+    // Add hub to scene (if not already there)
+    if (!this.hubScene.group.parent) {
+      this.scene.add(this.hubScene.group);
+    }
+
+    this.inHub = true;
+
+    // Reset player
+    this.playerStats.reset();
+    this.playerStateMachine.fsm.setState('idle');
+    const entry = this.hubScene.getPlayerEntry();
+    this.playerModel.mesh.position.copy(entry);
+
+    this.uiManager.setState('hub');
+    console.log('[Game] Hub loaded');
+  }
+
+  /**
+   * Called when the player activates the hub portal.
+   * Removes hub, starts a zone run.
+   */
+  private handleStartRunFromHub(): void {
+    if (this.hubScene && this.hubScene.group.parent) {
+      this.scene.remove(this.hubScene.group);
+    }
+    this.inHub = false;
+
+    this.uiManager.setState('gameplay');
     this.startZoneRun('shattered-atrium').catch((err) => {
-      console.error('[Game] Failed to restart zone run:', err);
+      console.error('[Game] Failed to start zone run from hub:', err);
     });
   }
 
@@ -581,7 +644,8 @@ export class Game {
   private onEscapeKey = (e: KeyboardEvent): void => {
     if (e.code !== 'Escape') return;
     const state = this.uiManager.getState();
-    if (state === 'gameplay') {
+    if (state === 'gameplay' || state === 'hub') {
+      this.prePauseState = state === 'hub' ? 'hub' : 'gameplay';
       this.pauseGame();
     } else if (state === 'paused') {
       this.resumeGame();
@@ -596,16 +660,21 @@ export class Game {
 
   private resumeGame(): void {
     this.pauseMenu.hide();
-    this.uiManager.setState('gameplay');
+    this.uiManager.setState(this.prePauseState);
     this.gameLoop.resume();
   }
 
-  /** Quit Run from pause menu — ends the run and restarts. */
+  /** Quit Run from pause menu — ends the run and returns to hub. */
   private handleQuitFromPause(): void {
     this.pauseMenu.hide();
     this.gameLoop.resume();
-    this.runState.endRun(false);
-    this.handleReturnToHub();
+    if (this.inHub) {
+      // Already in hub — just resume
+      this.uiManager.setState('hub');
+    } else {
+      this.runState.endRun(false);
+      this.handleReturnToHub();
+    }
   }
 
   private onToggleOutline = (e: KeyboardEvent): void => {
@@ -632,6 +701,9 @@ export class Game {
     this.assetLoader.dispose();
     if (this.currentRoom) {
       this.currentRoom.dispose();
+    }
+    if (this.hubScene) {
+      this.hubScene.dispose();
     }
     this.damageNumbers.dispose();
     this.titleScreen.dispose();
