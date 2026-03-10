@@ -3,7 +3,7 @@ import { AIState } from '../../ai/AIState';
 import { EnemyContext } from '../BaseEnemy';
 import { HitboxManager, SphereShape, Hitbox } from '../../combat/HitboxManager';
 import { AttackDataSchema } from '../EnemyFactory';
-import { distToPlayer, pickAttack } from '../shared';
+import { distToPlayer, pickAttack, requestAttackToken, releaseAttackToken } from '../shared';
 import type { SpiralDancer } from './SpiralDancer';
 
 // ── Scratch vectors ─────────────────────────────────────────────
@@ -110,11 +110,14 @@ export class DancerOrbitState implements AIState<EnemyContext> {
     // Attack cooldown
     this.attackTimer += dt;
     if (this.attackTimer >= this.attackCooldownDuration) {
-      // Close range → whip_lash, orbit range → dart_strike
-      if (dist <= 4) {
-        return 'whip_lash';
+      if (requestAttackToken(ctx)) {
+        // Close range → whip_lash, orbit range → dart_strike
+        if (dist <= 4) {
+          return 'whip_lash';
+        }
+        return 'dart_strike';
       }
-      return 'dart_strike';
+      // Token denied — keep orbiting, retry next frame
     }
 
     return null;
@@ -222,9 +225,10 @@ export class DancerDartStrikeState implements AIState<EnemyContext> {
     return null;
   }
 
-  exit(_ctx: EnemyContext): void {
+  exit(ctx: EnemyContext): void {
     this.removeHitbox();
     this.dancer.setTelegraphGlow(false);
+    releaseAttackToken(ctx);
   }
 
   private createHitbox(ctx: EnemyContext): void {
@@ -343,9 +347,10 @@ export class DancerWhipLashState implements AIState<EnemyContext> {
     return null;
   }
 
-  exit(_ctx: EnemyContext): void {
+  exit(ctx: EnemyContext): void {
     this.removeHitbox();
     this.dancer.setTelegraphGlow(false);
+    releaseAttackToken(ctx);
   }
 
   private createHitbox(ctx: EnemyContext): void {

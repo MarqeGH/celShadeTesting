@@ -1,0 +1,74 @@
+[
+  {
+    "id": "unlock-edge-spike",
+    "name": "Edge Spike",
+    "description": "A needle of compressed edge. Strikes fast, reaches short.",
+    "category": "weapon",
+    "cost": 50,
+    "prerequisite": null,
+    "effect": { "type": "add_to_pool", "target": "edge-spike" }
+  },
+  {
+    "id": "unlock-void-cleaver",
+    "name": "Void Cleaver",
+    "description": "A slab of absence given weight. Each swing carves meaning from the air.",
+    "category": "weapon",
+    "cost": 80,
+    "prerequisite": null,
+    "effect": { "type": "add_to_pool", "target": "void-cleaver" }
+  },
+  {
+    "id": "unlock-hp-1",
+    "name": "Reinforced Form I",
+    "description": "Stabilize your geometry. +10 max HP.",
+    "category": "stat",
+    "cost": 40,
+    "prerequisite": null,
+    "effect": { "type": "stat_bonus", "target": "maxHp", "value": 10 }
+  },
+  {
+    "id": "unlock-hp-2",
+    "name": "Reinforced Form II",
+    "description": "Further stabilization. +10 max HP.",
+    "category": "stat",
+    "cost": 60,
+    "prerequisite": "unlock-hp-1",
+    "effect": { "type": "stat_bonus", "target": "maxHp", "value": 10 }
+  },
+  {
+    "id": "unlock-stamina-1",
+    "name": "Expanded Lattice",
+    "description": "Widen your internal structure. +10 max stamina.",
+    "category": "stat",
+    "cost": 50,
+    "prerequisite": null,
+    "effect": { "type": "stat_bonus", "target": "maxStamina", "value": 10 }
+  },
+  {
+    "id": "unlock-dash-strike",
+    "name": "Dash Strike",
+    "description": "Attack immediately out of a dodge roll.",
+    "category": "ability",
+    "cost": 100,
+    "prerequisite": null,
+    "effect": { "type": "ability_grant", "target": "dash_strike" }
+  },
+  {
+    "id": "unlock-glow-trail",
+    "name": "Residual Glow",
+    "description": "Leave a faint luminous trail as you move.",
+    "category": "cosmetic",
+    "cost": 30,
+    "prerequisite": null,
+    "effect": { "type": "add_to_pool", "target": "cosmetic-glow-trail" }
+  },
+  {
+    "id": "unlock-shatter-color",
+    "name": "Prismatic Collapse",
+    "description": "Enemies shatter into colorful fragments on death.",
+    "category": "cosmetic",
+    "cost": 30,
+    "prerequisite": null,
+    "effect": { "type": "add_to_pool", "target": "cosmetic-shatter-color" }
+  }
+]

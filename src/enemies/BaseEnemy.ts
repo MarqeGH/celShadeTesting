@@ -1,10 +1,12 @@
 import * as THREE from 'three';
 import { StateMachine } from '../ai/StateMachine';
+import { AggroCoordinator } from '../ai/AggroCoordinator';
 import { HitboxManager, SphereShape } from '../combat/HitboxManager';
 import { CombatEntity } from '../combat/CombatSystem';
 import { EventBus } from '../app/EventBus';
 import { SphereCollider, testSphereVsAABB, resolveCollision } from '../engine/CollisionSystem';
 import { WallCollider } from '../world/RoomModule';
+import { TelegraphVFX } from '../rendering/TelegraphVFX';
 
 // ── Entity ID counter ───────────────────────────────────────────
 
@@ -22,6 +24,7 @@ export interface EnemyStats {
   hp: number;
   moveSpeed: number;
   turnSpeed: number;
+  defense: number;          // damage reduction (0 = none, 100 = 50%)
   poise: number;
   maxPoise: number;
   poiseRegenDelay: number;  // seconds before poise starts recovering
@@ -33,6 +36,8 @@ export interface EnemyStats {
 export interface EnemyContext {
   enemy: BaseEnemy;
   playerPosition: THREE.Vector3;
+  /** Aggro coordinator for attack-token gating. Optional (absent in hub/test). */
+  aggroCoordinator?: AggroCoordinator;
 }
 
 // ── Hit flash constants ─────────────────────────────────────────
@@ -99,6 +104,9 @@ export abstract class BaseEnemy implements CombatEntity {
     center: new THREE.Vector3(),
     radius: 0.8, // default, overridden in initialize() from hurtbox
   };
+
+  // Telegraph VFX (color pulse + scale pulse)
+  private telegraphVfx = new TelegraphVFX();
 
   // Stagger callback (set externally, e.g. by the stagger system or FSM)
   private _onStagger: (() => void) | null = null;
@@ -177,6 +185,10 @@ export abstract class BaseEnemy implements CombatEntity {
     return this.stats.maxHp;
   }
 
+  getDefense(): number {
+    return this.stats.defense;
+  }
+
   getPosition(): THREE.Vector3 {
     return this.group.position;
   }
@@ -226,6 +238,9 @@ export abstract class BaseEnemy implements CombatEntity {
   }
 
   private triggerStagger(): void {
+    // Release attack token on stagger (frees slot for another enemy)
+    this.getFSMContext().aggroCoordinator?.releaseToken(this.entityId);
+
     if (this._onStagger) {
       this._onStagger();
     }
@@ -238,9 +253,15 @@ export abstract class BaseEnemy implements CombatEntity {
   die(): void {
     if (this._dead || this._dying) return;
 
+    // Clean up telegraph VFX before death
+    this.endTelegraph();
+
     this._dying = true;
     this._dead = true;
     this._deathTimer = 0;
+
+    // Release attack token on death
+    this.getFSMContext().aggroCoordinator?.releaseToken(this.entityId);
 
     // Unregister from combat
     this.hitboxManager.unregisterHurtbox(this.entityId);
@@ -282,6 +303,9 @@ export abstract class BaseEnemy implements CombatEntity {
     ctx.playerPosition.copy(playerPosition);
     this.fsm.update(dt);
 
+    // Telegraph VFX (color pulse + scale pulse)
+    this.telegraphVfx.update(dt);
+
     // Poise regen
     this.updatePoiseRegen(dt);
 
@@ -294,6 +318,35 @@ export abstract class BaseEnemy implements CombatEntity {
   /** Get a reference to the FSM for direct state control. */
   getFSM(): StateMachine<EnemyContext> {
     return this.fsm;
+  }
+
+  /**
+   * Attach an AggroCoordinator so this enemy's FSM states can request attack tokens.
+   * Called by EncounterManager after spawning.
+   */
+  setAggroCoordinator(coordinator: AggroCoordinator): void {
+    this.getFSMContext().aggroCoordinator = coordinator;
+  }
+
+  // ── Telegraph VFX ─────────────────────────────────────────────
+
+  /**
+   * Start a telegraph animation (color pulse + scale pulse).
+   * Called by attack states during wind-up. Color codes:
+   *   Red = melee, Orange = ranged, White = unblockable.
+   */
+  telegraph(color: THREE.Color, duration: number): void {
+    if (this.mesh) {
+      this.telegraphVfx.start(this.group, this.mesh, color, duration);
+    }
+  }
+
+  /**
+   * End the telegraph animation, restoring original color and scale.
+   * Safe to call even if no telegraph is active.
+   */
+  endTelegraph(): void {
+    this.telegraphVfx.end();
   }
 
   /** Get the FSM context (enemy ref + player position). */

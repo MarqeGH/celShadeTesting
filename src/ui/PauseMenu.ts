@@ -111,6 +111,7 @@ export class PauseMenu {
     container: HTMLElement,
     private onResume: () => void,
     private onQuitRun: () => void,
+    private onSettings?: () => void,
   ) {
     injectStyles();
 
@@ -134,10 +135,11 @@ export class PauseMenu {
     resumeBtn.addEventListener('click', () => this.handleResume());
     buttons.appendChild(resumeBtn);
 
-    // Settings button (placeholder — disabled until T-073)
+    // Settings button
     const settingsBtn = document.createElement('button');
-    settingsBtn.className = 'pause-btn disabled';
+    settingsBtn.className = 'pause-btn';
     settingsBtn.textContent = 'Settings';
+    settingsBtn.addEventListener('click', () => this.handleSettings());
     buttons.appendChild(settingsBtn);
 
     // Quit Run button
@@ -178,6 +180,14 @@ export class PauseMenu {
   private handleQuitRun(): void {
     if (!this.active) return;
     this.onQuitRun();
+  }
+
+  private handleSettings(): void {
+    if (!this.active) return;
+    if (this.onSettings) {
+      this.hide();
+      this.onSettings();
+    }
   }
 
   dispose(): void {

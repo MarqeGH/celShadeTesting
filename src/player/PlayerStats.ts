@@ -20,8 +20,10 @@ export const SPRINT_STAMINA_PER_SEC = 3;
 
 // ── Tuning constants ────────────────────────────────────────────
 
-const MAX_HP = 100;
-const MAX_STAMINA = 100;
+export const BASE_MAX_HP = 100;
+export const BASE_MAX_STAMINA = 100;
+const MAX_HP = BASE_MAX_HP;
+const MAX_STAMINA = BASE_MAX_STAMINA;
 const MAX_HEAL_CHARGES = 3;
 const HEAL_AMOUNT = 35;
 const STAMINA_REGEN_RATE = 25;    // per second
@@ -163,6 +165,19 @@ export class PlayerStats {
   /** Returns the walk speed modifier when exhausted. */
   get exhaustedWalkSpeed(): number {
     return EXHAUSTED_WALK_SPEED;
+  }
+
+  // ── Meta-progression bonuses ────────────────────────────────
+
+  /**
+   * Apply meta-progression bonuses to max HP and stamina.
+   * Call after reset() at the start of a run.
+   */
+  applyMetaBonuses(maxHpBonus: number, maxStaminaBonus: number): void {
+    this._maxHp = MAX_HP + maxHpBonus;
+    this._hp = this._maxHp;
+    this._maxStamina = MAX_STAMINA + maxStaminaBonus;
+    this._stamina = this._maxStamina;
   }
 
   // ── Reset ───────────────────────────────────────────────────

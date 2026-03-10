@@ -68,6 +68,8 @@ export class HeavyAttackState implements AIState<PlayerContext> {
     this.heavyMultMax = weapon.heavyMultiplier;
     this.damageMultiplier = this.heavyMultMin;
 
+    ctx.eventBus?.emit('PLAYER_ATTACK', { type: 'heavy' });
+
     // Visual: compress Y while charging
     ctx.model.mesh.scale.y = HEAVY_CHARGE_SCALE_Y;
   }

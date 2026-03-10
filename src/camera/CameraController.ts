@@ -35,9 +35,11 @@ export class CameraController {
   /** Lerp factor per fixed update — 0 = no follow, 1 = instant snap */
   private readonly followSmoothing = 0.1;
 
-  /** Mouse sensitivity (radians per pixel of mouse movement) */
-  private readonly sensitivityX = 0.003;
-  private readonly sensitivityY = 0.003;
+  /** Base mouse sensitivity (radians per pixel of mouse movement) */
+  private readonly baseSensitivityX = 0.003;
+  private readonly baseSensitivityY = 0.003;
+  /** User-adjustable sensitivity multiplier (0.1–2.0) */
+  private sensitivityMultiplier = 1.0;
 
   /** Vertical angle limits (radians) */
   private readonly minPitch = THREE.MathUtils.degToRad(-10);
@@ -99,12 +101,24 @@ export class CameraController {
     return v;
   }
 
+  /** Set camera sensitivity multiplier (0.1–2.0). */
+  setSensitivity(multiplier: number): void {
+    this.sensitivityMultiplier = Math.max(0.1, Math.min(2.0, multiplier));
+  }
+
+  /** Get current sensitivity multiplier. */
+  getSensitivity(): number {
+    return this.sensitivityMultiplier;
+  }
+
   // ── Private ──────────────────────────────────────────────────
 
   private updateFreeOrbit(targetPosition: THREE.Vector3): void {
     // Read mouse deltas and update orbit angles
-    this.yaw -= this.input.mouseDeltaX * this.sensitivityX;
-    this.pitch += this.input.mouseDeltaY * this.sensitivityY;
+    const sx = this.baseSensitivityX * this.sensitivityMultiplier;
+    const sy = this.baseSensitivityY * this.sensitivityMultiplier;
+    this.yaw -= this.input.mouseDeltaX * sx;
+    this.pitch += this.input.mouseDeltaY * sy;
     this.pitch = THREE.MathUtils.clamp(this.pitch, this.minPitch, this.maxPitch);
 
     // Smooth follow toward target

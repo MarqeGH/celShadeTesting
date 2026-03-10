@@ -10,6 +10,7 @@ export interface SaveSettings {
   sfxVolume: number;      // 0.0–1.0
   musicVolume: number;    // 0.0–1.0
   cameraSensitivity: number; // 0.1–2.0
+  tutorialShown: boolean; // true after first controls overlay dismissed
 }
 
 export interface BestRunStats {
@@ -31,6 +32,7 @@ export const DEFAULT_SETTINGS: SaveSettings = {
   sfxVolume: 1.0,
   musicVolume: 0.7,
   cameraSensitivity: 1.0,
+  tutorialShown: false,
 };
 
 export const DEFAULT_BEST_RUN: BestRunStats = {

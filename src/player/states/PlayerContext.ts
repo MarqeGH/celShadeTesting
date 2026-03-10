@@ -4,6 +4,7 @@ import { PlayerStats } from '../PlayerStats';
 import { PlayerModel } from '../PlayerModel';
 import { CameraController } from '../../camera/CameraController';
 import { WeaponSystem } from '../../combat/WeaponSystem';
+import { EventBus } from '../../app/EventBus';
 
 // ── Context shared by all player states ─────────────────────────
 
@@ -14,6 +15,7 @@ export interface PlayerContext {
   model: PlayerModel;
   camera: CameraController;
   weaponSystem: WeaponSystem;
+  eventBus?: EventBus;
 }
 
 // ── Helper: check for any movement input ────────────────────────

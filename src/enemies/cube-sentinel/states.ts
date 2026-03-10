@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { AIState } from '../../ai/AIState';
 import { EnemyContext } from '../BaseEnemy';
 import { AttackDataSchema } from '../EnemyFactory';
-import { distToPlayer, pickAttack } from '../shared';
+import { distToPlayer, pickAttack, requestAttackToken, releaseAttackToken } from '../shared';
+import { TELEGRAPH_RANGED } from '../../rendering/TelegraphVFX';
 import type { CubeSentinel } from './CubeSentinel';
 
 // ── Scratch vectors ─────────────────────────────────────────────
@@ -77,7 +78,10 @@ export class SentinelAlertState implements AIState<EnemyContext> {
     }
 
     if (dist <= this.attackRange) {
-      return 'attack';
+      if (requestAttackToken(ctx)) {
+        return 'attack';
+      }
+      // Token denied — just keep facing player (ranged unit stays in alert)
     }
 
     return null;
@@ -130,9 +134,9 @@ export class SentinelAttackState implements AIState<EnemyContext> {
     // Lock fire direction
     this.fireDir.copy(_toPlayer);
 
-    // Telegraph glow
-    const isScatter = this.currentAttack?.id === 'scatter_shot';
-    this.sentinel.setTelegraphGlow(true, isScatter);
+    // Telegraph VFX: color pulse + scale pulse
+    const telegraphDur = (this.currentAttack?.telegraphDuration ?? 500) / 1000;
+    this.sentinel.telegraph(TELEGRAPH_RANGED, telegraphDur);
   }
 
   update(dt: number, ctx: EnemyContext): string | null {
@@ -191,8 +195,9 @@ export class SentinelAttackState implements AIState<EnemyContext> {
     return null;
   }
 
-  exit(_ctx: EnemyContext): void {
+  exit(ctx: EnemyContext): void {
     this.sentinel.setTelegraphGlow(false, false);
+    releaseAttackToken(ctx);
   }
 
   private fireProjectiles(ctx: EnemyContext): void {

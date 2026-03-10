@@ -21,6 +21,8 @@ export interface CombatEntity {
   stringId: string;
   getHp(): number;
   getMaxHp(): number;
+  /** Defense stat for damage reduction (0 = no reduction). */
+  getDefense(): number;
   takeDamage(amount: number): number;
   isDead(): boolean;
   getPosition(): THREE.Vector3;
@@ -60,6 +62,7 @@ export class CombatSystem {
   private staggerSystem: StaggerSystem;
   private entities = new Map<number, CombatEntity>();
   private parryHandler: ParryHandler | null = null;
+  private playerAttackMultiplier: (() => number) | null = null;
 
   constructor(hitboxManager: HitboxManager, eventBus: EventBus, staggerSystem: StaggerSystem) {
     this.hitboxManager = hitboxManager;
@@ -92,6 +95,14 @@ export class CombatSystem {
     this.parryHandler = handler;
   }
 
+  /**
+   * Set a callback that returns the player's current attack damage multiplier.
+   * Used for parry buff (1.5x for 3s after successful parry).
+   */
+  setPlayerAttackMultiplier(provider: () => number): void {
+    this.playerAttackMultiplier = provider;
+  }
+
   /** Run hitbox overlap detection. Call once per frame. */
   update(): void {
     this.hitboxManager.update();
@@ -102,6 +113,10 @@ export class CombatSystem {
   private onHit(hit: HitResult): void {
     const defender = this.entities.get(hit.defenderId);
     if (!defender) return;
+
+    // ── No friendly fire: skip enemy-on-enemy hits ───────────
+    const attacker = this.entities.get(hit.attackerId);
+    if (attacker && attacker.type === 'enemy' && defender.type === 'enemy') return;
 
     // ── Parry check for player-targeted hits ──────────────────
     if (defender.type === 'player' && this.parryHandler) {
@@ -121,7 +136,12 @@ export class CombatSystem {
       }
     }
 
-    const result = calculateDamage(hit.attackData);
+    // Apply player attack multiplier (parry buff) for player-sourced attacks
+    const attackMultiplier = hit.attackerId === PLAYER_ENTITY_ID && this.playerAttackMultiplier
+      ? this.playerAttackMultiplier()
+      : 1.0;
+
+    const result = calculateDamage(hit.attackData, attackMultiplier, defender.getDefense());
     const remainingHp = defender.takeDamage(result.damage);
 
     // Apply poise damage via StaggerSystem

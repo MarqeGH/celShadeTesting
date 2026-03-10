@@ -3,7 +3,8 @@ import { AIState } from '../../ai/AIState';
 import { EnemyContext } from '../BaseEnemy';
 import { HitboxManager, SphereShape, Hitbox } from '../../combat/HitboxManager';
 import { AttackDataSchema } from '../EnemyFactory';
-import { distToPlayer, pickAttack } from '../shared';
+import { distToPlayer, pickAttack, requestAttackToken, releaseAttackToken, getOrbitTarget } from '../shared';
+import { TELEGRAPH_MELEE } from '../../rendering/TelegraphVFX';
 import type { TriangleShard } from './TriangleShard';
 
 // ── Scratch vectors ─────────────────────────────────────────────
@@ -60,7 +61,12 @@ export class ShardChaseState implements AIState<EnemyContext> {
     }
 
     if (dist <= this.attackRange) {
-      return 'attack';
+      if (requestAttackToken(ctx)) {
+        return 'attack';
+      }
+      // Token denied — orbit at attack range instead of standing still
+      this.shard.moveTowardPublic(getOrbitTarget(ctx, this.attackRange, dt), dt);
+      return null;
     }
 
     this.shard.moveTowardPublic(ctx.playerPosition, dt);
@@ -126,8 +132,9 @@ export class ShardAttackState implements AIState<EnemyContext> {
       this.dashSpeed = 0;
     }
 
-    // Telegraph visual: glow red
-    this.shard.setTelegraphGlow(true);
+    // Telegraph visual: color pulse + scale pulse
+    const telegraphDur = (this.currentAttack?.telegraphDuration ?? 500) / 1000;
+    this.shard.telegraph(TELEGRAPH_MELEE, telegraphDur);
   }
 
   update(dt: number, ctx: EnemyContext): string | null {
@@ -144,7 +151,7 @@ export class ShardAttackState implements AIState<EnemyContext> {
       if (this.timer >= telegraphDur) {
         this.phase = 'active';
         this.timer = 0;
-        this.shard.setTelegraphGlow(false);
+        this.shard.endTelegraph();
         this.createHitbox(ctx);
       }
       return null;
@@ -178,9 +185,10 @@ export class ShardAttackState implements AIState<EnemyContext> {
     return null;
   }
 
-  exit(_ctx: EnemyContext): void {
+  exit(ctx: EnemyContext): void {
     this.removeHitbox();
-    this.shard.setTelegraphGlow(false);
+    this.shard.endTelegraph();
+    releaseAttackToken(ctx);
   }
 
   private createHitbox(ctx: EnemyContext): void {

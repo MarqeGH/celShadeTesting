@@ -26,6 +26,8 @@ import '../enemies/lattice-weaver/LatticeWeaver'; // side-effect: registers in E
 import { EncounterManager, EncounterData } from '../world/EncounterManager';
 import { HUD } from '../ui/HUD';
 import { UIManager } from '../ui/UIManager';
+import { BossHealthBar } from '../ui/BossHealthBar';
+import { ControlsOverlay } from '../ui/ControlsOverlay';
 import { DebugOverlay } from '../utils/debug';
 import { DamageNumbers } from '../ui/DamageNumbers';
 import { DoorSystem } from '../world/DoorSystem';
@@ -44,6 +46,11 @@ import { SaveManager } from '../save/SaveManager';
 import { ZoneGenerator, type ZoneLayout } from '../world/ZoneGenerator';
 import { HazardSystem } from '../world/HazardSystem';
 import { HubScene } from '../world/HubScene';
+import { ShopUI } from '../ui/ShopUI';
+import { UnlockRegistry } from '../progression/UnlockRegistry';
+import { MetaProgression } from '../progression/MetaProgression';
+import { AudioManager } from '../audio/AudioManager';
+import { SettingsMenu } from '../ui/SettingsMenu';
 import '../levels/Zone1Config'; // side-effect: registers zone config in ZoneRegistry
 
 export class Game {
@@ -93,6 +100,13 @@ export class Game {
   private currentRoom: RoomModule | null = null;
   private hubScene: HubScene | null = null;
   private inHub = false;
+  private shopUI: ShopUI;
+  private unlockRegistry: UnlockRegistry;
+  private metaProgression: MetaProgression;
+  private audioManager: AudioManager;
+  private bossHealthBar: BossHealthBar;
+  private settingsMenu: SettingsMenu;
+  private controlsOverlay: ControlsOverlay;
   /** Tracks UI state before pausing so we can restore it on resume. */
   private prePauseState: 'gameplay' | 'hub' = 'gameplay';
 
@@ -133,7 +147,9 @@ export class Game {
     // Combat system: EventBus → HitboxManager → StaggerSystem → CombatSystem
     this.eventBus = new EventBus();
     this.weaponSystem.setEventBus(this.eventBus);
+    this.playerStateMachine.setEventBus(this.eventBus);
     this.saveManager = new SaveManager(this.eventBus);
+    this.audioManager = new AudioManager(this.eventBus, this.saveManager);
     this.hitboxManager = new HitboxManager();
     this.weaponSystem.setHitboxManager(this.hitboxManager, PLAYER_ENTITY_ID);
     this.staggerSystem = new StaggerSystem();
@@ -150,6 +166,7 @@ export class Game {
       stringId: 'player',
       getHp: () => playerStats.hp,
       getMaxHp: () => playerStats.maxHp,
+      getDefense: () => 0, // player base defense (future: armor pickups)
       takeDamage: (amount) => {
         if (debugRef.overlay?.godMode) return playerStats.hp; // god mode: no damage
         return playerStats.takeDamage(amount);
@@ -176,6 +193,11 @@ export class Game {
       onSuccess: () => this.playerStateMachine.notifyParrySuccess(),
       onFail: () => this.playerStateMachine.notifyParryFail(),
     });
+
+    // Parry buff → 1.5x player damage multiplier for 3s after successful parry
+    this.combatSystem.setPlayerAttackMultiplier(
+      () => this.playerStateMachine.damageMultiplier,
+    );
 
     // Encounter manager
     this.encounterManager = new EncounterManager(
@@ -216,8 +238,11 @@ export class Game {
 
     // HUD and UI
     this.hud = new HUD(this.playerStats, this.eventBus);
+    this.hud.setWeaponSystem(this.weaponSystem);
     this.hud.attach(container);
     this.uiManager = new UIManager(this.hud);
+    this.bossHealthBar = new BossHealthBar(container, this.eventBus);
+    this.uiManager.setBossBar(this.bossHealthBar);
 
     // Run state tracking (startRun called later in startZoneRun)
     this.runState = new RunState(this.eventBus);
@@ -236,11 +261,36 @@ export class Game {
       () => this.handleReturnToHub(),
     );
 
+    // Settings menu (created before pause menu so pause can reference it)
+    this.settingsMenu = new SettingsMenu(container, {
+      getMasterVolume: () => this.audioManager.getMasterVolume(),
+      getSFXVolume: () => this.audioManager.getSFXVolume(),
+      getMusicVolume: () => this.audioManager.getMusicVolume(),
+      getCameraSensitivity: () => this.cameraController.getSensitivity(),
+      setMasterVolume: (v) => this.audioManager.setMasterVolume(v),
+      setSFXVolume: (v) => this.audioManager.setSFXVolume(v),
+      setMusicVolume: (v) => this.audioManager.setMusicVolume(v),
+      setCameraSensitivity: (v) => this.cameraController.setSensitivity(v),
+      persist: (settings) => this.saveManager.updateSettings(settings),
+    }, () => this.handleSettingsClosed());
+
     // Pause menu
     this.pauseMenu = new PauseMenu(
       container,
       () => this.resumeGame(),
       () => this.handleQuitFromPause(),
+      () => this.handleSettingsOpened(),
+    );
+
+    // Apply saved settings on startup
+    const savedSettings = this.saveManager.getData().settings;
+    this.cameraController.setSensitivity(savedSettings.cameraSensitivity);
+
+    // Controls overlay — auto-shows on first run if tutorial not yet shown
+    this.controlsOverlay = new ControlsOverlay(
+      container,
+      !savedSettings.tutorialShown,
+      () => this.saveManager.updateSettings({ tutorialShown: true }),
     );
 
     // Hide HUD when player dies (and unpause if paused)
@@ -250,6 +300,7 @@ export class Game {
         this.gameLoop.resume();
       }
       this.uiManager.setState('menu');
+      this.audioManager.fadeAmbientOut(1.5);
     });
 
     // Debug overlay
@@ -285,6 +336,11 @@ export class Game {
     this.doorSystem.setTransitionCallback(async (exit) => {
       return this.handleRoomTransition(exit);
     });
+
+    // Unlock registry, meta-progression, and shop UI
+    this.unlockRegistry = new UnlockRegistry();
+    this.metaProgression = new MetaProgression(this.unlockRegistry, this.saveManager);
+    this.shopUI = new ShopUI(container, () => this.handleShopClosed());
 
     // Start in title state — HUD hidden, scene renders behind title overlay
     this.uiManager.setState('title');
@@ -344,8 +400,12 @@ export class Game {
     }
     this.currentLayout = layout;
 
-    // Start run tracking
+    // Start run tracking and apply meta-progression bonuses
     this.runState.startRun(zoneId);
+    this.playerStats.reset();
+    this.metaProgression.applyBonuses(this.playerStats);
+    this.audioManager.playAmbient(zoneId);
+    this.hud.setRoomProgress(0, layout.rooms.length, zoneId);
 
     // Load the first room from the layout
     await this.loadRoomFromLayout(0);
@@ -417,6 +477,17 @@ export class Game {
       entryPosition,
     );
 
+    // Detect boss enemies in this encounter and show boss health bar
+    for (const enemy of this.encounterManager.getEnemies()) {
+      if (BossHealthBar.isBoss(enemy.stringId)) {
+        this.bossHealthBar.showBoss(
+          enemy.stringId.split('_')[0], // extract base ID (e.g. 'aggregate-boss')
+          enemy.getMaxHp(),
+        );
+        break; // only one boss at a time
+      }
+    }
+
     console.log(
       `[Game] Room ${roomIndex + 1}/${this.currentLayout.rooms.length}: ` +
       `"${entry.roomId}" + encounter "${entry.encounterId}" (difficulty ${entry.actualDifficulty})`,
@@ -451,7 +522,16 @@ export class Game {
       return;
     }
 
+    // Skip player/hub updates while shop overlay is open
+    if (this.shopUI.isActive()) {
+      this.input.resetMouseDelta();
+      return;
+    }
+
     this.playerStateMachine.update(dt);
+
+    // Update parry buff visual glow on player mesh
+    this.playerModel.setParryBuffGlow(this.playerStateMachine.hasParryBuff);
 
     const playerPos = this.playerModel.mesh.position;
 
@@ -554,6 +634,9 @@ export class Game {
       return this.playerModel.mesh.position.clone();
     }
 
+    // Update room progress indicator
+    this.hud.setRoomProgress(nextIndex, this.currentLayout.rooms.length, this.runState.currentZone);
+
     // Load the next room from the layout
     await this.loadRoomFromLayout(nextIndex);
 
@@ -582,7 +665,7 @@ export class Game {
 
   /**
    * Load the hub scene. Creates it on first call, then re-adds to scene.
-   * Resets player state and positions at hub entry.
+   * Loads unlock registry, resets player state, positions at hub entry.
    */
   private loadHub(): void {
     // Remove current room from scene
@@ -597,12 +680,18 @@ export class Game {
       this.scene.remove(this.testArena.group);
     }
 
+    // Load unlock data (no-op if already loaded)
+    this.unlockRegistry.load(this.assetLoader).catch((err) => {
+      console.warn('[Game] Failed to load unlock registry:', err);
+    });
+
     // Create hub scene on first load
     if (!this.hubScene) {
       this.hubScene = new HubScene(
         this.input,
         this.container,
         () => this.handleStartRunFromHub(),
+        () => this.handleShopActivated(),
       );
     }
 
@@ -620,6 +709,8 @@ export class Game {
     this.playerModel.mesh.position.copy(entry);
 
     this.uiManager.setState('hub');
+    this.hud.hideRoomProgress();
+    this.audioManager.playAmbient('hub');
     console.log('[Game] Hub loaded');
   }
 
@@ -639,10 +730,42 @@ export class Game {
     });
   }
 
+  /** Called when the player interacts with the shop pedestal. */
+  private handleShopActivated(): void {
+    this.shopUI.show(this.saveManager, this.unlockRegistry);
+    if (this.hubScene) {
+      this.hubScene.setInteractionsEnabled(false);
+    }
+  }
+
+  /** Called when the shop overlay is closed. */
+  private handleShopClosed(): void {
+    if (this.hubScene) {
+      this.hubScene.setInteractionsEnabled(true);
+    }
+  }
+
+  /** Called when "Settings" is clicked in pause menu. */
+  private handleSettingsOpened(): void {
+    this.settingsMenu.show();
+  }
+
+  /** Called when settings menu is closed (Back button). */
+  private handleSettingsClosed(): void {
+    this.pauseMenu.show();
+  }
+
   // ── Pause toggle (Escape key) ─────────────────────────────────────
 
   private onEscapeKey = (e: KeyboardEvent): void => {
     if (e.code !== 'Escape') return;
+    // If settings menu is open, close it and return to pause menu
+    if (this.settingsMenu.isActive()) {
+      this.settingsMenu.hide();
+      this.pauseMenu.show();
+      return;
+    }
+
     const state = this.uiManager.getState();
     if (state === 'gameplay' || state === 'hub') {
       this.prePauseState = state === 'hub' ? 'hub' : 'gameplay';
@@ -656,12 +779,14 @@ export class Game {
     this.gameLoop.pause();
     this.uiManager.setState('paused');
     this.pauseMenu.show();
+    this.audioManager.fadeAmbientOut(0.8);
   }
 
   private resumeGame(): void {
     this.pauseMenu.hide();
     this.uiManager.setState(this.prePauseState);
     this.gameLoop.resume();
+    this.audioManager.resumeAmbient();
   }
 
   /** Quit Run from pause menu — ends the run and returns to hub. */
@@ -681,6 +806,9 @@ export class Game {
     if (e.code === 'KeyO') {
       this.postProcessing.enabled = !this.postProcessing.enabled;
       console.log(`Outline post-processing: ${this.postProcessing.enabled ? 'ON' : 'OFF'}`);
+    }
+    if (e.code === 'KeyM') {
+      this.audioManager.toggleMute();
     }
   };
 
@@ -710,6 +838,10 @@ export class Game {
     this.menuSystem.dispose();
     this.victoryScreen.dispose();
     this.pauseMenu.dispose();
+    this.settingsMenu.dispose();
+    this.controlsOverlay.dispose();
+    this.shopUI.dispose();
+    this.audioManager.dispose();
     this.saveManager.dispose();
     this.runState.dispose();
     this.uiManager.dispose();

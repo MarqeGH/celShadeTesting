@@ -56,6 +56,8 @@ export class DodgeState implements AIState<PlayerContext> {
       const meshY = ctx.model.mesh.rotation.y;
       this.dodgeDir.set(-Math.sin(meshY), 0, -Math.cos(meshY));
     }
+
+    ctx.eventBus?.emit('PLAYER_DODGE', {});
   }
 
   update(dt: number, ctx: PlayerContext): string | null {

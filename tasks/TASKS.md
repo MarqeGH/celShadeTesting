@@ -1,6 +1,6 @@
 # Task Registry
 
-> 64 of 86 tasks completed (T-001–T-065 + T-BUG-001 done). Phase 6 tasks T-066–T-085 remain.
+> 78 of 86 tasks completed (T-001–T-079 + T-BUG-001 done). Phase 6 tasks T-080–T-085 remain.
 > Completed task details are archived in `tasks/completed/`:
 > - [Core Infrastructure](completed/core-infrastructure.md) — T-001, T-003, T-004, T-005, T-014, T-024
 > - [Player & Combat](completed/player-combat.md) — T-002, T-006–T-010, T-015–T-019, T-031, T-039–T-041
@@ -487,7 +487,7 @@
 
 ---
 
-### T-066: Unlock Registry and Data
+### [DONE] T-066: Unlock Registry and Data
 
 | Field | Value |
 |-------|-------|
@@ -499,9 +499,11 @@
 | **Acceptance Criteria** | Unlock data loads and parses. Registry correctly filters available unlocks based on prerequisites and already-owned. |
 | **Verification** | Call getAvailable with empty unlocks list. Verify starter unlocks shown. Add prerequisite unlock, verify gated items appear. |
 
+**Implementation note:** Created `data/progression/unlocks.json` with 8 unlocks: 2 weapons (edge-spike cost 50, void-cleaver cost 80), 3 stat bonuses (HP×2 at 40/60 cost with prerequisite chain, stamina at 50), 1 ability (dash_strike placeholder, cost 100), 2 cosmetics (glow-trail, shatter-color at 30 each). `UnlockRegistry` loads via AssetLoader, stores in Map, exposes `getAll()`, `getAvailable(playerUnlocks)` (filters owned + prerequisite checks), `getCost(id)`, `getEffect(id)`.
+
 ---
 
-### T-067: Hub Shop UI
+### [DONE] T-067: Hub Shop UI
 
 | Field | Value |
 |-------|-------|
@@ -513,9 +515,11 @@
 | **Acceptance Criteria** | Shop opens from hub interaction. Shows available unlocks. Purchase deducts currency and persists unlock. Already-owned items are marked. |
 | **Verification** | Accumulate shards across 2+ runs. Open shop. Purchase an unlock. Reload page. Verify unlock persists. |
 
+**Implementation note:** Created `ShopUI` as HTML/CSS overlay (z-index 90) matching PauseMenu pattern. Lists all unlocks with Buy/Owned/Locked states. Purchases via `SaveManager.spendCurrency()` + `addUnlock()`. Escape closes (capture-phase handler). Added shop pedestal to `HubScene` (blue rotating crystal at east side) with "Press E to browse wares" prompt. Game.ts wires ShopUI + UnlockRegistry, disables hub interactions while shop open, freezes player movement.
+
 ---
 
-### T-068: Meta-Progression Stat Application
+### [DONE] T-068: Meta-Progression Stat Application
 
 | Field | Value |
 |-------|-------|
@@ -527,9 +531,11 @@
 | **Acceptance Criteria** | Purchasing HP unlock increases player HP on next run. Bonuses cap at +20%. Bonuses applied fresh each run start. |
 | **Verification** | Buy 2 HP unlocks (+10 each). Start run. Verify HP bar shows 120 max. |
 
+**Implementation note:** Created `src/progression/MetaProgression.ts` — reads owned unlocks from SaveManager, filters for `stat_bonus` type, sums per target stat, caps at +20% of base (using exported `BASE_MAX_HP`/`BASE_MAX_STAMINA` from PlayerStats). Added `applyMetaBonuses()` to PlayerStats. Called in `Game.startZoneRun()` after `reset()` and `startRun()`.
+
 ---
 
-### T-069: Audio Manager Foundation
+### [DONE] T-069: Audio Manager Foundation
 
 | Field | Value |
 |-------|-------|
@@ -541,9 +547,11 @@
 | **Acceptance Criteria** | AudioManager initializes without errors. EventBus subscriptions are active. Volume controls work. Missing audio files fail gracefully (warn, don't crash). |
 | **Verification** | Game boots with AudioManager. No console errors. Volume settings load from save data. |
 
+**Implementation note:** Created `src/audio/SFXRegistry.ts` mapping SFX/music IDs to file paths (7 SFX + 2 music placeholders). Created `src/audio/AudioManager.ts` using Howler.js with `playSFX()`, `playMusic()`/`stopMusic()`, volume controls (`setMasterVolume`/`setSFXVolume`/`setMusicVolume`). Reads initial volumes from SaveManager settings. Subscribes to EventBus: PLAYER_DAMAGED→player-hit, ENEMY_DAMAGED→hit-impact, ENEMY_DIED→enemy-death, SHARD_COLLECTED→shard-collect. Missing audio files fail gracefully (Howl onloaderror warns). Wired into Game.ts after SaveManager construction. Disposed before SaveManager.
+
 ---
 
-### T-070: Combat Sound Effects
+### [DONE] T-070: Combat Sound Effects
 
 | Field | Value |
 |-------|-------|
@@ -555,9 +563,11 @@
 | **Acceptance Criteria** | All 7 combat sounds play at appropriate events. Sounds are short (<500ms). No audio latency >50ms. |
 | **Verification** | Play game. Attack enemies — hear whoosh + impact. Get hit — hear player-hit. Parry — hear clang. Collect shards — hear chime. |
 
+**Implementation note:** Created `src/audio/ToneBank.ts` with procedural tone parameters for all 7 SFX (frequency, duration, oscillator type, volume). Added `generateTone()` to AudioManager using Web Audio API as fallback when Howl files are missing (`failedSFX` set tracks failed loads). Added 3 new EventBus events: `PLAYER_ATTACK`, `PLAYER_DODGE`, `PLAYER_PARRY_SUCCESS`. Added `eventBus?` to PlayerContext interface; emitted from LightAttackState, HeavyAttackState, DodgeState enter() and PlayerStateMachine.notifyParrySuccess(). AudioManager subscribes to all 7 combat events. PlayerStateMachine.setEventBus() wired in Game.ts.
+
 ---
 
-### T-071: Ambient Audio
+### [DONE] T-071: Ambient Audio
 
 | Field | Value |
 |-------|-------|
@@ -569,9 +579,11 @@
 | **Acceptance Criteria** | Ambient audio plays during gameplay. Changes on zone transition. Fades on pause/death. Volume adjustable. |
 | **Verification** | Start run. Hear ambient drone. Pause — audio fades. Resume — audio returns. |
 
+**Implementation note:** Added procedural ambient drone system to `src/audio/AudioManager.ts` using Web Audio API. Two oscillators (detuned for beating), LFO for slow volume modulation, low-pass filter for atmospheric feel. Per-zone configs: `hub` (55Hz sine, very muffled), `shattered-atrium` (65Hz sawtooth, wider beat), plus default fallback. Methods: `playAmbient(zoneId)` with 1.5s fade-in, `fadeAmbientOut(duration)`, `resumeAmbient()`, `stopAmbient()`, `setAmbientVolume()`. Wired in Game.ts: hub load → hub ambient, zone run start → zone ambient, pause → fade out, resume → fade back in, player death → slow 1.5s fade out.
+
 ---
 
-### T-072: Boss Health Bar UI
+### [DONE] T-072: Boss Health Bar UI
 
 | Field | Value |
 |-------|-------|
@@ -583,9 +595,11 @@
 | **Acceptance Criteria** | Boss bar appears during boss fights only. Updates in real-time. Phase markers visible. Fades on death. |
 | **Verification** | Start boss encounter. Verify bar appears with boss name. Deal damage. Verify bar drains smoothly. |
 
+**Implementation note**: `BossHealthBar.ts` — HTML/CSS overlay component at bottom of screen. 60% width, centered, red gradient fill bar with dark background. Phase markers at 66%/33%. Boss name in red monospace above bar. Subscribes to `ENEMY_DAMAGED` (updates bar width via CSS transition 0.3s) and `ENEMY_DIED` (fades out). Pulse animation on `<20%` HP via injected CSS keyframes. `UIManager.ts` updated with `setBossBar()` for state management (hidden in hub/title/menu, persists during gameplay/pause). `Game.ts` creates instance, registers with UIManager, detects boss enemies after encounter spawn via `BossHealthBar.isBoss()` and calls `showBoss(bossId, maxHp)`.
+
 ---
 
-### T-073: Settings Menu
+### [DONE] T-073: Settings Menu
 
 | Field | Value |
 |-------|-------|
@@ -597,9 +611,11 @@
 | **Acceptance Criteria** | All sliders functional. Changes persist across sessions. Camera sensitivity affects orbit speed in real time. |
 | **Verification** | Open settings. Adjust volumes. Verify audio changes. Reload game. Verify settings persisted. |
 
+**Implementation note**: `SettingsMenu.ts` — HTML/CSS overlay (z-index 95, above pause menu). Four range sliders: Master Volume (0–100%), SFX Volume (0–100%), Music Volume (0–100%), Camera Sensitivity (0.1–2.0). Changes apply immediately via `SettingsCallbacks` interface that wraps AudioManager and CameraController. "Defaults" button restores `DEFAULT_SETTINGS`. "Back" button persists settings via `SaveManager.updateSettings()` and returns to pause menu. Escape key also closes settings → pause. `PauseMenu.ts` updated with optional `onSettings` callback (4th constructor param), enabling the previously-disabled Settings button. `CameraController.ts` gained `setSensitivity(multiplier)` / `getSensitivity()` using a multiplier on base sensitivity values. Saved camera sensitivity applied on startup in Game.ts.
+
 ---
 
-### T-074: Weapon HUD Indicator
+### [DONE] T-074: Weapon HUD Indicator
 
 | Field | Value |
 |-------|-------|
@@ -611,9 +627,11 @@
 | **Acceptance Criteria** | Current weapon name visible during gameplay. Swap shows animation transition. Secondary weapon dimmed. |
 | **Verification** | Equip 2 weapons. Verify both shown in HUD. Swap. Verify indicator updates with animation. |
 
+**Implementation note**: Added weapon indicator to `HUD.ts` bottom-right corner. Primary slot shows weapon name (condensed 12px, white 50% opacity) + colored rectangle icon (30×14px). Secondary slot shown dimmed (35% opacity) with smaller icon (22×10px) below primary; hidden when no secondary weapon. On `WEAPON_SWAPPED` event, syncs display and plays CSS `hud-weapon-flash` animation (brightness pulse 0.35s). `HUD.setWeaponSystem()` called from Game.ts to enable weapon data reading. Weapon colors mapped per ID (`fracture-blade` → blue, `edge-spike` → red, `void-needle` → purple, `prism-cleaver` → green).
+
 ---
 
-### T-075: Room Progress Indicator
+### [DONE] T-075: Room Progress Indicator
 
 | Field | Value |
 |-------|-------|
@@ -625,9 +643,11 @@
 | **Acceptance Criteria** | Dots match zone layout length. Current room highlighted. Progress updates on room transition. |
 | **Verification** | Start run. Verify dots match generated room count. Clear rooms. Verify dots fill in. |
 
+**Implementation note**: Added room progress indicator to `HUD.ts` at top-center of screen. Zone name displayed above dots (10px uppercase, 3px letter spacing). One 8px circular dot per room: hollow outline = future, filled grey = cleared, filled white = current. Subscribes to `ROOM_CLEARED` to advance dots. Fades in at full opacity on room entry, dims to 25% opacity after 3s via `performance.now()` timer in `update()`. `setRoomProgress(index, total, zoneName)` called from `Game.ts` at run start and on room transitions. `hideRoomProgress()` called when returning to hub.
+
 ---
 
-### T-076: Controls Tutorial Overlay
+### [DONE] T-076: Controls Tutorial Overlay
 
 | Field | Value |
 |-------|-------|
@@ -639,9 +659,11 @@
 | **Acceptance Criteria** | Overlay shows all controls clearly. Auto-shows once for new players. Toggleable with F4. |
 | **Verification** | Clear save data. Start game. Verify overlay auto-shows. Dismiss. Press F4. Verify it re-appears. |
 
+**Implementation note**: `ControlsOverlay.ts` — centered semi-transparent panel (z-index 85) listing 12 keybindings (WASD, Shift, Space, LMB, RMB, Q, R, Tab, E, V, M, Esc). Monospace key badges + action labels. Toggle with F1 (F4 was already used for debug clear-room). Any other key dismisses. Auto-shows on first game launch when `tutorialShown` is false. On first dismissal, calls back to persist `tutorialShown: true` via SaveManager. `SaveSchema.ts` updated with `tutorialShown: boolean` in SaveSettings (default false). `SettingsMenu.ts` persist callback changed to `Partial<SaveSettings>` for compatibility. Wired in `Game.ts` with auto-show check and dispose.
+
 ---
 
-### T-077: Defense/Armor in Damage Calculator
+### [DONE] T-077: Defense/Armor in Damage Calculator
 
 | Field | Value |
 |-------|-------|
@@ -653,9 +675,11 @@
 | **Acceptance Criteria** | Damage correctly reduced by defense stat. Zero defense = no change. Monolith Brute takes reduced damage. |
 | **Verification** | Hit Monolith Brute. Verify damage < base weapon damage. Hit Triangle Shard. Verify full damage. |
 
+**Implementation note**: `DamageCalculator.ts` updated with defense parameter: `finalDamage = rawDamage * (100 / (100 + defense))`, result rounded. Stagger damage NOT reduced by defense. `CombatEntity` interface gained `getDefense(): number`. `CombatSystem.onHit()` passes `defender.getDefense()` to `calculateDamage()`. `EnemyStats` gained `defense: number` field. `EnemyData.stats` gained optional `defense?` field. All 6 enemy subclasses pass `defense: data.stats.defense ?? 0` (defaults to 0). Monolith Brute JSON updated with `"defense": 30` (takes ~77% damage). Player defense hardcoded to 0 in Game.ts.
+
 ---
 
-### T-078: Parry Damage Buff in Pipeline
+### [DONE] T-078: Parry Damage Buff in Pipeline
 
 | Field | Value |
 |-------|-------|
@@ -667,9 +691,11 @@
 | **Acceptance Criteria** | After successful parry, next attacks deal 1.5x damage for 3 seconds. Multiplier appears in damage numbers. |
 | **Verification** | Parry an enemy attack. Immediately attack. Compare damage number to non-parry attack. Verify 1.5x. |
 
+**Implementation note**: `CombatSystem.ts` gained `setPlayerAttackMultiplier(provider)` callback + uses it as `weaponMultiplier` arg to `calculateDamage()` for player-sourced attacks (attackerId === PLAYER_ENTITY_ID). The existing `PlayerStateMachine.damageMultiplier` getter (returns 1.5 during 3s parry buff, else 1.0) is wired in via `Game.ts`. `PlayerModel.ts` gained `setParryBuffGlow(active)` — toggles the mesh color to bright white-blue during parry buff window, called each frame from Game.ts fixed update.
+
 ---
 
-### T-079: Enemy Aggro Coordination
+### [DONE] T-079: Enemy Aggro Coordination
 
 | Field | Value |
 |-------|-------|
@@ -680,6 +706,8 @@
 | **Description** | Per the combat spec: max 2 enemies actively attacking at once; others orbit/reposition. Create AggroCoordinator that tracks which enemies have "attack tokens". EncounterManager owns the coordinator. Enemies request a token before entering attack state. If denied (2 tokens out), they orbit/wait. Token released on attack completion or stagger. Token auto-expires after 3s (prevents deadlocks). Coordinator exposed to enemy FSM via EnemyContext. |
 | **Acceptance Criteria** | With 4+ enemies, only 2 attack simultaneously. Others visibly orbit or hold position. No deadlocks. |
 | **Verification** | Spawn 5 triangle shards. Observe: max 2 attacking at once. Kill one attacker. Verify another claims the token. |
+
+**Implementation note**: Created `src/ai/AggroCoordinator.ts` with max 2 tokens, 3s auto-expiry for deadlock prevention. Added optional `aggroCoordinator` to `EnemyContext` interface and `setAggroCoordinator()` on `BaseEnemy`. Token released on attack state exit, stagger (via `triggerStagger()`), and death (via `die()`). Modified 5 enemy chase/position states (TriangleShard, CubeSentinel, SpiralDancer, MonolithBrute, LatticeWeaver) to `requestAttackToken()` before transitioning to attack — denied enemies orbit at range or wait. All 12 attack state exit methods call `releaseAttackToken()`. AggregateBoss is exempt (bosses always attack). EncounterManager owns the coordinator, ticks it per-frame, clears on encounter start/dispose, and attaches it to each spawned non-boss enemy. Shared helpers added to `shared.ts`: `requestAttackToken()`, `releaseAttackToken()`, `getOrbitTarget()`.
 
 ---
 

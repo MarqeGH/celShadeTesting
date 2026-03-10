@@ -16,7 +16,6 @@ import {
 // ── Constants ────────────────────────────────────────────────────
 
 const TRIANGLE_COLOR = new THREE.Color(0xcc4444);
-const TELEGRAPH_COLOR = new THREE.Color(1.0, 0.15, 0.05);
 
 // ── TriangleShard class ─────────────────────────────────────────
 
@@ -38,6 +37,7 @@ export class TriangleShard extends BaseEnemy {
         maxHp: data.stats.maxHP,
         moveSpeed: data.stats.moveSpeed,
         turnSpeed: data.stats.turnSpeed,
+        defense: data.stats.defense ?? 0,
         poise: data.stats.poise,
         maxPoise: data.stats.poise,
         poiseRegenDelay: data.stats.poiseRegenDelay / 1000,
@@ -119,21 +119,6 @@ export class TriangleShard extends BaseEnemy {
     this.faceDirection(dir, dt);
   }
 
-  // ── Telegraph glow ────────────────────────────────────────────
-
-  setTelegraphGlow(active: boolean): void {
-    const mesh = this.group.children[0] as THREE.Mesh | undefined;
-    if (!mesh) return;
-
-    const mat = mesh.material;
-    if (mat instanceof THREE.ShaderMaterial && mat.uniforms['uBaseColor']) {
-      if (active) {
-        mat.uniforms['uBaseColor'].value.copy(TELEGRAPH_COLOR);
-      } else {
-        mat.uniforms['uBaseColor'].value.copy(this.baseColor);
-      }
-    }
-  }
 }
 
 // ── Register in EnemyRegistry ───────────────────────────────────

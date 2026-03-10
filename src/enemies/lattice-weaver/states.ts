@@ -3,7 +3,7 @@ import { AIState } from '../../ai/AIState';
 import { EnemyContext } from '../BaseEnemy';
 import { AttackDataSchema } from '../EnemyFactory';
 import { HitboxManager } from '../../combat/HitboxManager';
-import { distToPlayer, pickAttack } from '../shared';
+import { distToPlayer, pickAttack, requestAttackToken, releaseAttackToken } from '../shared';
 import type { LatticeWeaver } from './LatticeWeaver';
 
 // ── Scratch vectors ─────────────────────────────────────────────
@@ -104,13 +104,16 @@ export class WeaverPositionState implements AIState<EnemyContext> {
     // Attack readiness
     this.attackTimer += dt;
     if (this.attackTimer >= this.attackInterval) {
-      this.attackTimer = 0;
+      if (requestAttackToken(ctx)) {
+        this.attackTimer = 0;
 
-      // Prefer web_deploy if under max zones, otherwise node_burst
-      if (this.weaver.getActiveZoneCount() < 2 && Math.random() < 0.6) {
-        return 'web_deploy';
+        // Prefer web_deploy if under max zones, otherwise node_burst
+        if (this.weaver.getActiveZoneCount() < 2 && Math.random() < 0.6) {
+          return 'web_deploy';
+        }
+        return 'node_burst';
       }
-      return 'node_burst';
+      // Token denied — keep positioning, retry next frame
     }
 
     return null;
@@ -190,8 +193,9 @@ export class WeaverWebDeployState implements AIState<EnemyContext> {
     return null;
   }
 
-  exit(_ctx: EnemyContext): void {
+  exit(ctx: EnemyContext): void {
     this.weaver.setTelegraphGlow(false);
+    releaseAttackToken(ctx);
   }
 }
 
@@ -271,8 +275,9 @@ export class WeaverNodeBurstState implements AIState<EnemyContext> {
     return null;
   }
 
-  exit(_ctx: EnemyContext): void {
+  exit(ctx: EnemyContext): void {
     this.weaver.setTelegraphGlow(false);
+    releaseAttackToken(ctx);
   }
 }
 

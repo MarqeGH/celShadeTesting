@@ -4,6 +4,7 @@ import { EnemyFactory } from '../enemies/EnemyFactory';
 import { CubeSentinel } from '../enemies/cube-sentinel/CubeSentinel';
 import { AggregateBoss } from '../enemies/aggregate-boss/AggregateBoss';
 import { LatticeWeaver } from '../enemies/lattice-weaver/LatticeWeaver';
+import { AggroCoordinator } from '../ai/AggroCoordinator';
 import { CombatSystem } from '../combat/CombatSystem';
 import { StaggerSystem } from '../combat/StaggerSystem';
 import { HitboxManager } from '../combat/HitboxManager';
@@ -67,6 +68,8 @@ export class EncounterManager {
   private isSpawning = false;
   // Wall colliders from the current room (for enemy wall collision)
   private wallColliders: WallCollider[] = [];
+  // Aggro coordinator — limits simultaneous attackers
+  private aggroCoordinator = new AggroCoordinator();
 
   constructor(
     eventBus: EventBus,
@@ -100,6 +103,7 @@ export class EncounterManager {
     this.currentWaveIndex = 0;
     this.allEnemies = [];
     this.waveEnemies = [];
+    this.aggroCoordinator.clear();
 
     if (encounter.waves.length === 0) {
       this.state = 'completed';
@@ -125,6 +129,9 @@ export class EncounterManager {
     this.playerPosition.copy(playerPosition);
 
     if (this.state === 'idle' || this.state === 'completed') return;
+
+    // Tick aggro coordinator token expiry
+    this.aggroCoordinator.update(dt);
 
     // Update all alive enemies
     for (let i = this.allEnemies.length - 1; i >= 0; i--) {
@@ -210,6 +217,7 @@ export class EncounterManager {
     this.waveEnemies = [];
     this.encounter = null;
     this.state = 'idle';
+    this.aggroCoordinator.clear();
   }
 
   // ── Wave management ─────────────────────────────────────────
@@ -249,6 +257,11 @@ export class EncounterManager {
 
           this.scene.add(enemy.group);
           this.combatSystem.registerEntity(enemy);
+
+          // Attach aggro coordinator (bosses exempt — they always attack)
+          if (!(enemy instanceof AggregateBoss)) {
+            enemy.setAggroCoordinator(this.aggroCoordinator);
+          }
 
           // Register enemy poise with StaggerSystem
           const stats = enemy.stats;

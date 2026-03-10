@@ -18,8 +18,6 @@ import {
 // ── Constants ────────────────────────────────────────────────────
 
 const CUBE_COLOR = new THREE.Color(0xcc8833);
-const TELEGRAPH_FACE_COLOR = new THREE.Color(1.0, 0.6, 0.1);
-const TELEGRAPH_ALL_COLOR = new THREE.Color(1.0, 0.5, 0.0);
 
 // ── Projectile ──────────────────────────────────────────────────
 
@@ -57,6 +55,7 @@ export class CubeSentinel extends BaseEnemy {
         maxHp: data.stats.maxHP,
         moveSpeed: data.stats.moveSpeed,
         turnSpeed: data.stats.turnSpeed,
+        defense: data.stats.defense ?? 0,
         poise: data.stats.poise,
         maxPoise: data.stats.poise,
         poiseRegenDelay: data.stats.poiseRegenDelay / 1000,
@@ -139,22 +138,6 @@ export class CubeSentinel extends BaseEnemy {
 
   faceDirectionPublic(dir: THREE.Vector3, dt: number): void {
     this.faceDirection(dir, dt);
-  }
-
-  // ── Telegraph glow ────────────────────────────────────────────
-
-  setTelegraphGlow(active: boolean, allFaces: boolean): void {
-    const mesh = this.group.children[0] as THREE.Mesh | undefined;
-    if (!mesh) return;
-
-    const mat = mesh.material;
-    if (mat instanceof THREE.ShaderMaterial && mat.uniforms['uBaseColor']) {
-      if (active) {
-        mat.uniforms['uBaseColor'].value.copy(allFaces ? TELEGRAPH_ALL_COLOR : TELEGRAPH_FACE_COLOR);
-      } else {
-        mat.uniforms['uBaseColor'].value.copy(this.baseColor);
-      }
-    }
   }
 
   // ── Projectile system ─────────────────────────────────────────

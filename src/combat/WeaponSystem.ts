@@ -204,10 +204,13 @@ export class WeaponSystem {
     this.activeHitboxes.push(hitbox);
 
     // Bridge to HitboxManager for collision detection
+    // Sphere positioned forward of the player body so the body itself doesn't deal damage.
+    // Center at radius*0.65 forward, sphere radius = radius*0.55 — covers weapon arc only.
     if (this.hitboxManager) {
       const weapon = this.equippedWeapon;
-      const sphereCenter = origin.clone().addScaledVector(direction, radius * 0.4);
-      const sphereShape: SphereShape = { type: 'sphere', center: sphereCenter, radius };
+      const sphereRadius = radius * 0.55;
+      const sphereCenter = origin.clone().addScaledVector(direction, radius * 0.65);
+      const sphereShape: SphereShape = { type: 'sphere', center: sphereCenter, radius: sphereRadius };
       const managerHitbox = this.hitboxManager.createHitbox(
         this.playerId,
         id,
@@ -227,10 +230,10 @@ export class WeaponSystem {
     hitbox.origin.copy(origin);
     hitbox.direction.copy(direction).normalize();
 
-    // Update bridged HitboxManager sphere position
+    // Update bridged HitboxManager sphere position (matches createHitbox offset)
     const bridged = this.hitboxBridge.get(hitbox.attackId);
     if (bridged && bridged.shape.type === 'sphere') {
-      bridged.shape.center.copy(origin).addScaledVector(direction, hitbox.radius * 0.4);
+      bridged.shape.center.copy(origin).addScaledVector(direction, hitbox.radius * 0.65);
     }
   }
 

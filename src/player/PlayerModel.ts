@@ -5,12 +5,17 @@ import { createCelMaterial } from '../rendering/CelShadingPipeline';
  * Player mesh: an icosahedron with per-frame vertex displacement
  * to create a "flickering instability" effect — the player is an unstable form.
  */
+// ── Parry buff glow colors ────────────────────────────────────
+const PLAYER_BASE_COLOR = new THREE.Color(0x607080);
+const PARRY_BUFF_COLOR = new THREE.Color(0.95, 0.95, 1.0); // bright white-blue
+
 export class PlayerModel {
   readonly mesh: THREE.Mesh;
 
   private basePositions: Float32Array;
   private normals: Float32Array;
   private time = 0;
+  private _parryGlowActive = false;
 
   /** Max displacement distance per vertex */
   private readonly displacementStrength = 0.04;
@@ -58,6 +63,19 @@ export class PlayerModel {
     }
 
     posAttr.needsUpdate = true;
+  }
+
+  // ── Parry buff visual indicator ──────────────────────────────
+
+  /** Set the parry buff glow (bright white-blue tint while buff is active). */
+  setParryBuffGlow(active: boolean): void {
+    if (active === this._parryGlowActive) return;
+    this._parryGlowActive = active;
+
+    const mat = this.mesh.material;
+    if (mat instanceof THREE.ShaderMaterial && mat.uniforms['uBaseColor']) {
+      mat.uniforms['uBaseColor'].value.copy(active ? PARRY_BUFF_COLOR : PLAYER_BASE_COLOR);
+    }
   }
 
   dispose(): void {

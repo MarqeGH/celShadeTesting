@@ -43,6 +43,7 @@ export class MonolithBrute extends BaseEnemy {
         maxHp: data.stats.maxHP,
         moveSpeed: data.stats.moveSpeed,
         turnSpeed: data.stats.turnSpeed,
+        defense: data.stats.defense ?? 0,
         poise: data.stats.poise,
         maxPoise: data.stats.poise,
         poiseRegenDelay: data.stats.poiseRegenDelay / 1000,

@@ -53,6 +53,8 @@ export class LightAttackState implements AIState<PlayerContext> {
     // Compute attack direction from player facing
     const meshY = ctx.model.mesh.rotation.y;
     this._attackDir.set(Math.sin(meshY), 0, Math.cos(meshY));
+
+    ctx.eventBus?.emit('PLAYER_ATTACK', { type: 'light' });
   }
 
   update(dt: number, ctx: PlayerContext): string | null {

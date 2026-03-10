@@ -8,7 +8,8 @@
     "turnSpeed": 90,
     "poise": 100,
     "poiseRegenDelay": 3000,
-    "poiseRegenRate": 10
+    "poiseRegenRate": 10,
+    "defense": 30
   },
   "perception": {
     "aggroRange": 15,

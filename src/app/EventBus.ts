@@ -16,6 +16,9 @@ export interface GameEvents {
   RUN_ENDED: { survived: boolean; shardsCollected: number };
   WEAPON_SWAPPED: { weaponId: string; weaponName: string };
   WEAPON_PICKUP_COLLECTED: { weaponId: string; weaponName: string; position: { x: number; y: number; z: number } };
+  PLAYER_ATTACK: { type: 'light' | 'heavy' };
+  PLAYER_DODGE: {};
+  PLAYER_PARRY_SUCCESS: {};
 }
 
 // ── Types ──────────────────────────────────────────────────────────

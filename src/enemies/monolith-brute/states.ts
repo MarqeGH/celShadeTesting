@@ -3,7 +3,7 @@ import { AIState } from '../../ai/AIState';
 import { EnemyContext } from '../BaseEnemy';
 import { HitboxManager, SphereShape, Hitbox } from '../../combat/HitboxManager';
 import { AttackDataSchema } from '../EnemyFactory';
-import { distToPlayer, pickAttack } from '../shared';
+import { distToPlayer, pickAttack, requestAttackToken, releaseAttackToken, getOrbitTarget } from '../shared';
 import type { MonolithBrute } from './MonolithBrute';
 
 // ── Scratch vectors ─────────────────────────────────────────────
@@ -74,10 +74,15 @@ export class BruteChaseState implements AIState<EnemyContext> {
 
     // Attack when in range
     if (dist <= this.attackRange) {
-      const roll = Math.random();
-      if (roll < 0.4) return 'slam';
-      if (roll < 0.7) return 'sweep';
-      return 'stomp';
+      if (requestAttackToken(ctx)) {
+        const roll = Math.random();
+        if (roll < 0.4) return 'slam';
+        if (roll < 0.7) return 'sweep';
+        return 'stomp';
+      }
+      // Token denied — orbit at attack range
+      this.brute.moveTowardPublic(getOrbitTarget(ctx, this.attackRange, dt, 2.0), dt);
+      return null;
     }
 
     return null;
@@ -164,9 +169,10 @@ export class BruteSlamState implements AIState<EnemyContext> {
     return null;
   }
 
-  exit(_ctx: EnemyContext): void {
+  exit(ctx: EnemyContext): void {
     this.removeHitbox();
     this.brute.setTelegraphGlow(false);
+    releaseAttackToken(ctx);
   }
 
   private createHitbox(ctx: EnemyContext): void {
@@ -282,9 +288,10 @@ export class BruteSweepState implements AIState<EnemyContext> {
     return null;
   }
 
-  exit(_ctx: EnemyContext): void {
+  exit(ctx: EnemyContext): void {
     this.removeHitbox();
     this.brute.setTelegraphGlow(false);
+    releaseAttackToken(ctx);
   }
 
   private createHitbox(ctx: EnemyContext): void {
@@ -398,9 +405,10 @@ export class BruteStompState implements AIState<EnemyContext> {
     return null;
   }
 
-  exit(_ctx: EnemyContext): void {
+  exit(ctx: EnemyContext): void {
     this.removeHitbox();
     this.brute.setTelegraphGlow(false);
+    releaseAttackToken(ctx);
   }
 
   private createHitbox(ctx: EnemyContext): void {

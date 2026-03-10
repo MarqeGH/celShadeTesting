@@ -58,6 +58,7 @@ export interface EnemyData {
     poise: number;
     poiseRegenDelay: number;
     poiseRegenRate: number;
+    defense?: number; // damage reduction (0 = none)
   };
   perception: {
     aggroRange: number;

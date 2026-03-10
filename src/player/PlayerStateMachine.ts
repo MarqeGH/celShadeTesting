@@ -1,5 +1,6 @@
 import { StateMachine } from '../ai/StateMachine';
 import { InputManager } from '../app/InputManager';
+import { EventBus } from '../app/EventBus';
 import { PlayerController } from './PlayerController';
 import { PlayerStats } from './PlayerStats';
 import { PlayerModel } from './PlayerModel';
@@ -72,6 +73,11 @@ export class PlayerStateMachine {
     this.fsm.setState('idle');
   }
 
+  /** Inject EventBus for audio event emission from player states. */
+  setEventBus(eventBus: EventBus): void {
+    this.context.eventBus = eventBus;
+  }
+
   update(dt: number): void {
     // Weapon swap — instant action, only in idle/run (no state transition)
     const state = this.fsm.getCurrentStateName();
@@ -129,6 +135,7 @@ export class PlayerStateMachine {
     this._parryBuffTimer = PARRY_BUFF_DURATION;
     this.context.stats.addStamina(PARRY_STAMINA_RECOVERY);
     this.parryState.triggerSuccessFlash(this.context);
+    this.context.eventBus?.emit('PLAYER_PARRY_SUCCESS', {});
     console.log('[Parry] SUCCESS — 1.5x damage buff for 3s, +10 stamina');
   }
 
